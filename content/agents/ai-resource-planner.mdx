@@ -1,0 +1,98 @@
+---
+title: "AI Professional Services Resource Planner"
+category: "Deterministic Optimization + AI"
+icon: "infra"
+problem: "Staffing decisions trade off skill fit, margin, utilization, and client continuity — a genuine constrained-optimization problem usually solved by memory and spreadsheets, not calculation."
+summary: "A deterministic, auditable weighted scoring engine does the actual optimization; AI is scoped to one narrow, single-pass explanation call — no agent loop, no multi-agent negotiation."
+stack: ["Python", "Google Gemini 2.5 Flash-Lite", "SQLite", "Pydantic"]
+highlights:
+  - "Deterministic, auditable weighted scoring engine — zero LLM involvement in any number shown to the user"
+  - "AI scoped to one single-pass explanation call per staffing request — no agent loop, no multi-agent orchestration"
+  - "Four constructed staffing scenarios, each isolating exactly one scoring dimension, with hand-verified exact scores"
+  - "22/22 tests passing, including exact score assertions (e.g. a candidate scoring precisely 78.25)"
+  - "The explanation prompt never includes a raw cost-rate figure — nothing to leak, by construction"
+publishedAt: "2026-08-28"
+repoUrl: "https://github.com/shreyas-pachpute/ai-resource-planner"
+featured: true
+---
+
+## The Problem
+
+Consulting firms and agencies live or die on staffing: the right skills,
+at the right availability, at a margin that works. It's a real
+constrained-optimization problem — the best-skilled person might blow the
+margin, the cheapest available person might risk the client relationship —
+and most firms solve it with a staffing lead's memory and a spreadsheet
+that's out of date within weeks. The interesting design question here
+wasn't how to apply AI to it. It was whether to.
+
+## The Decision
+
+<DecisionCard
+  decision="A deterministic weighted-scoring engine does the ranking. AI only explains it, in one single-pass call."
+  rationale="A margin-affecting staffing decision needs a calculation a CFO could actually audit, not a model's best guess — LLMs are unreliable at precise multi-factor numeric optimization and provide no auditability for a decision like this. The AI's job is narrow: take the engine's already-ranked output and explain the trade-off a human should weigh, and it doesn't need tool-calling or iteration to do that."
+  alternative="Reframing this as multiple agents negotiating between 'what's best for the client' and 'what's best for the employee' would look more sophisticated and be a worse system — the hard part here is optimization under constraints, a solved class of problem, not something that benefits from being reasoned about by several LLMs instead of one calculation."
+/>
+
+## The Architecture
+
+<ArchitectureBlock
+  title="Staffing request flow"
+  steps={[
+    "Hard-constraint filtering (practice group, certifications, skill minimums, availability)",
+    "Weighted fit scoring (skill, margin, utilization, client continuity)",
+    "Rank candidates",
+    "Single-pass explanation call on the top three",
+    "Grounding check before the result is shown",
+  ]}
+/>
+
+A candidate who fails a hard constraint — missing a certification, not
+actually available, would be pushed over 100% allocation — is excluded
+before scoring ever runs, never just down-ranked. The four scoring
+dimensions are combined by configurable weights, not hardcoded, because
+getting that weighting right for a specific firm's actual priorities is a
+business-configuration problem, not something a fixed formula should
+pretend to answer once.
+
+## Proving the Formula, Not Just Writing It
+
+The eval set here isn't four arbitrary test cases — it's four scenarios
+each engineered so every candidate is identical except in the one
+dimension being tested. Two candidates with the same skills, same cost,
+same continuity, differing only in resulting utilization after the
+assignment: the one landing in the healthy band should win, and the exact
+margin by which it wins is computable by hand before the code ever runs.
+
+<Metrics
+  items={[
+    {
+      label: "skill_matters scenario",
+      before: "Hand-computed expected score: 78.25",
+      after: "Engine output: 78.25 — exact match",
+    },
+    {
+      label: "Test coverage",
+      before: "Formula correctness asserted informally",
+      after: "22/22 tests, including exact score assertions per scenario",
+    },
+  ]}
+/>
+
+<Callout type="insight">
+  Compensation data sensitivity turned into a structural decision, not a
+  prompting one: the explanation prompt is built without ever reading
+  hourly_cost_rate or billing_rate at all — only the already-computed
+  0-100 margin score and a relative label like "comfortably above target
+  margin." The model literally has no dollar figure to leak, which is a
+  stronger guarantee than instructing it not to mention one.
+</Callout>
+
+## The Result
+
+Run against the four constructed scenarios, the deterministic engine picks
+the hand-verified correct top candidate every time, and the grounding
+validator confirms the explanation only ever references candidates that
+were actually in the ranked output. The genuinely hard part of this
+project wasn't the AI — it was resisting the pull toward agentic
+complexity when a calculation was the right tool for the job.

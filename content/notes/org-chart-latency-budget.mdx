@@ -1,0 +1,33 @@
+---
+title: "The org chart is a latency budget"
+type: "essay"
+theme: "product"
+summary: "Conway's Law isn't just about software architecture — it shows up directly in how fast an AI product can actually respond."
+publishedAt: "2026-05-22"
+featured: true
+order: 3
+---
+
+## The claim
+
+<Reference
+  title="How Do Committees Invent?"
+  source="Melvin Conway, 1968"
+  href="http://www.melconway.com/Home/Committees_Paper.html"
+/>
+
+Conway's Law says a system's architecture mirrors the communication structure of the organization that built it.[^1] It's usually cited about software modules — API boundaries end up matching team boundaries, whether anyone planned it that way or not. Less often discussed: it applies just as directly to the _runtime_ behavior of an AI product, specifically its latency.
+
+## Where this actually shows up
+
+Every system boundary that exists because two teams don't talk to each other directly becomes a network hop, a queue, or a synchronous call waiting on a service owned by people three Slack channels away. That's true of any distributed system. It matters more for AI products because the latency budget was already tight before any of those hops were added.
+
+A model call already costs a few hundred milliseconds. An agent architecture with five services owned by five different teams isn't five services — it's five deploy schedules and five sets of on-call priorities, and the p99 latency reflects all of it, not just the code path. The retrieval service is fast in isolation. The reranking service is fast in isolation. The response, once it's crossed four team boundaries to get assembled, isn't.
+
+## What to do about it
+
+The fix isn't reorganizing the company around latency — that's solving the wrong-sized problem with the wrong-sized tool. It's noticing, at design time, that every service boundary in the request path is a communication tax, and asking whether the team split that produced it is actually buying something (independent scaling, a genuinely separate domain of ownership) or whether it's just Conway's Law running in reverse: the org chart designing the system, instead of the system's actual requirements designing the org chart.
+
+The practical version of this question, asked before a new service boundary gets drawn: would this split exist if one team owned the whole request path? If the honest answer is no, the boundary is organizational, not architectural — and it will show up in the latency graph eventually.
+
+[^1]: Conway's original framing was about "design" broadly, not software specifically — the paper predates modern software architecture as a distinct discipline. The software-specific reading came later, but it's the one that stuck.

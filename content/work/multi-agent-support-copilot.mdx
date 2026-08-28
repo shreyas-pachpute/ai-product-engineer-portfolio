@@ -1,0 +1,126 @@
+---
+title: "Multi-Agent Support Copilot"
+category: "Multi-Agent System"
+tier: "signature"
+icon: "multiAgent"
+problem: "Every support ticket needed context pulled from five different systems before an agent could even start answering."
+summary: "A planner-and-specialist agent system that gathers context from multiple internal systems in parallel and drafts a response a human reviews before it sends."
+timeline: "5 weeks"
+publishedAt: "2026-04-14"
+featured: true
+order: 2
+---
+
+## The Problem
+
+A support agent picking up a ticket didn't have a "customer" problem —
+they had a scavenger hunt. Account status lived in one system, billing
+history in another, past tickets in a third, product usage in a
+fourth. Answering a moderately complex question meant opening four
+tabs before writing a single word of the reply. The actual reasoning
+part of the job — figuring out what's wrong and how to fix it — was a
+small fraction of the time spent.
+
+## The Constraint
+
+The naive fix is one agent with every tool bolted on: give a single
+LLM access to all four systems and let it figure out what to call and
+when. That works in a demo with three tools. It gets unreliable fast
+as tool count grows — the model has to hold the entire decision tree
+of "which tools are relevant to this specific question" in one
+reasoning pass, and it starts skipping steps or calling the wrong tool
+under time pressure the same way an overloaded human would.
+
+<DecisionCard
+  decision="A planner agent decomposes the request; specialized retrieval agents each own one system and run in parallel."
+  rationale="Splitting 'what do I need to know' from 'go get it' means each retrieval agent's job is small enough to be reliable — it has one system, one tool, one job. Running them in parallel instead of sequentially also means total latency is bounded by the slowest single lookup, not the sum of all four."
+  alternative="One agent with all tools available — fewer moving parts to build, but reliability dropped noticeably once real tickets (not test cases) started asking questions that touched three or four systems at once."
+/>
+
+## The Architecture
+
+<ArchitectureBlock
+  title="Request flow"
+  steps={[
+    "Ticket received",
+    "Planner decomposes into sub-questions",
+    "Retrieval agents run in parallel",
+    "Synthesis drafts a response",
+    "Human reviews and sends",
+  ]}
+/>
+
+The planner's only job is decomposition — turning "why was I charged
+twice" into concrete sub-questions like "what does the billing system
+show for this account in the last 30 days" and "does the usage system
+show two separate sessions that could explain two charges." Each
+sub-question maps to exactly one retrieval agent, so there's never
+ambiguity about which system answers which question.
+
+## The Hard Parts
+
+Getting the handoffs explicit was harder than getting any individual
+agent to work. The failure mode isn't "an agent gives a wrong answer"
+— it's "the planner asks a vague sub-question, the retrieval agent
+answers a slightly different question than the one that mattered, and
+the synthesis step confidently combines two answers that don't
+actually connect." None of the individual pieces are visibly broken;
+the seam between them is.
+
+```typescript
+type SubQuestion = {
+  system: "billing" | "accounts" | "tickets" | "usage";
+  question: string;
+  // Forces the planner to be explicit about what "done" looks like
+  // for this sub-question, instead of leaving it implicit.
+  expectedShape: "single-fact" | "time-range" | "list";
+};
+```
+
+Forcing the planner to declare `expectedShape` for every sub-question
+turned out to matter more than any prompt tuning — it's a small
+constraint that stops the planner from asking an open-ended question a
+retrieval agent can't reliably answer in a structured way.
+
+<Callout type="warning">
+  Parallel retrieval agents sharing no state was a deliberate simplification,
+  and it has a real cost: if two sub-questions actually depend on each other
+  (the second only makes sense given the first answer), the planner has to know
+  that up front and sequence them instead. It doesn't, yet — that's the clearest
+  gap in this version.
+</Callout>
+
+## Shipping It
+
+The synthesis step drafts a reply; it never sends one. Every draft
+goes to the human agent as a starting point with the underlying
+retrieval results attached, so a reviewer isn't trusting a black box —
+they can see exactly which billing record and which usage session the
+draft is citing before they approve it. That review step is
+instrumented the same way the extraction pipeline's confidence
+threshold is: edits and rejections are the signal that tells you where
+the system is actually weak, not where you assume it is.
+
+## The Outcome
+
+<Metrics
+  items={[
+    {
+      label: "Context-gathering time",
+      before: "Minutes across four systems, manually",
+      after: "Seconds, parallel and pre-assembled",
+    },
+    {
+      label: "Final send authority",
+      before: "N/A — no draft existed yet",
+      after: "Always a human, every ticket",
+    },
+  ]}
+/>
+
+The part I'd change first: give the planner the ability to sequence
+dependent sub-questions instead of assuming all of them are
+independent. It's a small architectural gap today because most
+tickets happen to decompose cleanly — but "happens to" is not the same
+as "is guaranteed to," and that's exactly the kind of assumption that
+should be fixed before it's load-bearing.

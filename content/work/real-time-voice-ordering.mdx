@@ -1,0 +1,72 @@
+---
+title: "Real-Time Voice Ordering"
+category: "Voice AI"
+tier: "buildlog"
+icon: "voice"
+problem: "Phone orders meant a hold queue or a rigid IVR menu — customers hung up on both."
+summary: "A low-latency voice ordering pipeline with barge-in support that turns natural conversation directly into a validated order object."
+timeline: "3 weeks"
+publishedAt: "2026-02-10"
+featured: true
+order: 1
+---
+
+## The Problem
+
+Phone orders had exactly two modes: wait on hold for a person, or
+fight through a touch-tone menu that couldn't handle "actually, make
+that a large, no wait, two of them." Neither is what anyone actually
+wants at 11pm on a weeknight. The bar for a voice system here wasn't
+"sounds impressive" — it was "doesn't make someone hang up and order
+somewhere else."
+
+## The Approach
+
+The scope was deliberately narrow: take an order, not have a
+conversation about the menu's philosophy. That narrowness is what made
+a three-week timeline realistic.
+
+<ArchitectureBlock
+  title="Request flow"
+  steps={[
+    "Speech in (streaming)",
+    "Turn-taking + barge-in",
+    "Structured-output parser",
+    "Order validation",
+    "Confirmation read-back",
+  ]}
+/>
+
+<DecisionCard
+  decision="Structured-output parsing on every turn, not a single end-of-call summarization pass."
+  rationale="Validating the order incrementally — item by item, as the customer speaks — means a misheard item gets caught and corrected in the same turn, not discovered after the customer has already hung up thinking the order was right."
+  alternative="Transcribe the whole call, then parse a final order at the end. Simpler to build, but any single misrecognition anywhere in the call became a wrong order with no chance to catch it in the moment."
+/>
+
+## What Shipped
+
+Barge-in — being able to interrupt the system mid-sentence the way you'd
+interrupt a person — was the single feature that made this feel like a
+conversation instead of a transcription pipeline with a voice attached.
+Without it, every correction ("no, small, not large") had to wait for
+the system to finish talking first, which is exactly the rigid,
+frustrating pattern the whole project was trying to replace.
+
+<Callout type="insight">
+  Latency budget was treated as a design constraint from day one, not a
+  performance pass at the end — every turn had a hard ceiling before it started
+  to feel like a delay a caller would notice, and every component in the
+  pipeline was chosen against that budget, not against "which is most accurate
+  in isolation."
+</Callout>
+
+## Retrospective
+
+Three weeks was enough because the scope stayed narrow — order-taking,
+not general conversation. The honest limitation is exactly there: this
+doesn't handle a caller asking about allergens or store hours mid-order
+gracefully, because that was explicitly out of scope, not because it's
+architecturally impossible. If this needed to expand into "handle
+anything a caller might ask," the planner/specialist split from the
+support copilot project is the right next architecture — this version
+doesn't have it because the problem, on purpose, never asked for it.

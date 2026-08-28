@@ -1,0 +1,98 @@
+---
+title: "AI Data Investigation & Root-Cause Agent"
+category: "Agentic Investigation"
+icon: "agents"
+problem: "Answering 'why did this metric change' meant an analyst manually hypothesizing, querying, and ruling out explanations — the same investigative loop rebuilt from scratch for every anomaly."
+summary: "A genuinely cyclic hypothesize-query-evaluate-refine agent over a guardrailed, read-only SQL tool, with every claim in the final report required to cite a query that actually ran."
+stack: ["Python", "Google Gemini 2.5 Flash-Lite", "SQLite", "pytest"]
+highlights:
+  - "Genuine cyclic hypothesize → query → evaluate → refine loop — not a disguised fixed pipeline"
+  - "Guardrailed, read-only SQL tool: single-SELECT-only, table-whitelisted, row-capped, wall-clock query timeout"
+  - "Automated evidence-grounding validator — every claim in the final report must cite a query_id that actually ran"
+  - "22/22 deterministic tests passing (guardrails, anomaly detection, grounding) at zero API cost"
+  - "Verified end-to-end on a real incident: correctly diagnosed a pipeline failure in 4 LLM calls, evidence grounding passed"
+publishedAt: "2026-08-27"
+repoUrl: "https://github.com/shreyas-pachpute/ai-data-investigation"
+featured: true
+---
+
+## The Problem
+
+Every data-driven team gets some version of the same question constantly:
+"why did revenue drop this week." Answering it well means checking whether
+it's a real business change or a data-quality issue, checking which segment
+the change is concentrated in, checking recent pipeline runs — a genuinely
+investigative process where the right next query depends entirely on what
+the last one revealed. That last part is the actual argument for an agent
+here, not "AI is powerful": a fixed checklist can't capture a process where
+step three doesn't exist until step two's result is known.
+
+## The Decision
+
+<DecisionCard
+  decision="A hand-rolled, bounded agent loop — not LangGraph."
+  rationale="This runs on a free-tier key with a genuinely tight daily request quota, so every LLM call needed to be explicit and auditable. A hand-rolled loop keeps the call count and the budget fully visible in the code that runs it, which mattered more at MVP stage than a graph framework's cyclic-state machinery — and it's still a real loop, not a disguised fixed pipeline: hypothesis selection, query proposal, and verdict evaluation each depend on what came before."
+  alternative="LangGraph is the closer textbook fit for a cyclic investigation loop, and it's the natural next step once investigation depth or parallel hypothesis-threading is worth the added complexity — deferred, not rejected."
+/>
+
+## The Architecture
+
+<ArchitectureBlock
+  title="Investigation flow"
+  steps={[
+    "Anomaly detection (deterministic z-score, not an LLM step)",
+    "Context gathering (metric definition, recent values, pipeline history)",
+    "Hypothesize candidate root causes",
+    "Propose a SQL query to test the top hypothesis",
+    "Execute through the guardrailed tool",
+    "Evaluate the verdict, refine or add hypotheses",
+    "Repeat until confident or budget-exhausted",
+    "Evidence-grounded report",
+  ]}
+/>
+
+Anomaly detection itself is deliberately not agentic — a same-weekday
+z-score against the trailing eight occurrences, plain Python, unit-tested
+like any other business logic. It exists to trigger the investigation, not
+to be part of it. The agent only starts once there's something concrete to
+explain.
+
+## The Guardrails
+
+The one tool the agent can call is a read-only SQL executor, and it's the
+part of this system I spent the most care on, not the prompting. It
+rejects anything that isn't a single `SELECT` (or `WITH ... SELECT`)
+statement, blocks a keyword list covering every write/DDL operation,
+checks every referenced table against a whitelist, clamps or auto-appends
+`LIMIT` to a row cap, and enforces a wall-clock timeout via a watchdog
+thread calling `conn.interrupt()`. An iterating agent given unconstrained
+SQL access against a real warehouse is a genuine cost and stability risk —
+constraining it in code, not by asking the model nicely, is the actual
+safety mechanism.
+
+<Callout type="insight">
+  The free-tier key's quota turned out to be 20 requests a day, not per
+  minute — a hard daily cap, not a burst limit. The first version of the
+  retry logic treated every 429 the same way and kept retrying a quota
+  that wouldn't reset for hours, burning through what little budget was
+  left. Fixed it to detect a daily-quota error specifically and fail fast
+  instead — retrying a problem that can't resolve on any reasonable
+  timescale is just wasting the budget you have left.
+</Callout>
+
+## The Result
+
+Every hypothesis, every query, every verdict, and the final conclusion get
+written to a JSON trace — the evidence trail is the actual deliverable
+here, not just the conclusion text. Run against a real injected incident
+(a failed regional ingestion pipeline), the agent correctly identified it
+as a data-quality issue rather than a genuine business change, cited the
+exact query that supported that conclusion, and did it in four LLM calls
+because the first hypothesis it tested was the right one — the loop is
+built to stop as soon as the evidence is strong, not to always spend its
+full budget.
+
+22 deterministic tests cover the guardrails, the anomaly detector, and the
+grounding validator — all of it runs with zero API calls, so the parts of
+this system that have to be reliable are tested the way reliable software
+is tested, not the way a prompt is tested.

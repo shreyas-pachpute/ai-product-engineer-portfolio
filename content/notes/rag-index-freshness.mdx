@@ -1,0 +1,48 @@
+---
+title: "Three ways to keep a RAG index fresh"
+type: "review"
+theme: "systems"
+summary: "Full rebuilds, incremental updates, and event-driven sync each trade freshness for operational complexity differently — a comparison of the actual trade-offs."
+publishedAt: "2026-06-15"
+featured: false
+order: 2
+---
+
+## The problem
+
+A RAG index is a cache of the source of truth, and like any cache, it goes stale the moment the underlying documents change. How stale is acceptable, and how that gets fixed, is an architecture decision most teams make by accident — usually by keeping whatever the initial prototype happened to do.
+
+## Option one: scheduled full rebuilds
+
+<ArchitectureBlock
+  title="Full rebuild flow"
+  steps={[
+    "Nightly cron",
+    "Re-fetch entire corpus",
+    "Re-chunk + re-embed",
+    "Swap index atomically",
+  ]}
+/>
+
+The simplest option, and the easiest to reason about: nothing is ever partially updated, so there's no class of bugs where half the index reflects the old version of a document and half reflects the new one. The cost is staleness — a document changed five minutes after the nightly job runs is wrong for almost a full day — and a rebuild cost that scales with total corpus size, not with how much actually changed.
+
+## Option two: incremental updates
+
+```typescript
+async function upsertChangedDocuments(sourceIds: string[]) {
+  const changed = await diffAgainstIndex(sourceIds);
+  await Promise.all(changed.map(reindexDocument));
+}
+```
+
+Diffing against the existing index and only re-embedding what changed fixes the cost problem — a small edit no longer triggers a full corpus re-embed — but introduces a new one: the diff itself has to be correct, and "correct" gets genuinely hard once documents can be deleted, merged, or split, not just edited in place.
+
+## Option three: event-driven sync
+
+The source system emits a change event (a webhook, a database trigger, a queue message) and the index updates within seconds instead of on a schedule. This is the only option that gets close to real freshness, and it's also the one with the most moving parts to keep healthy — a missed event means silent staleness with no natural mechanism to catch it, unlike a scheduled rebuild, which self-heals every night regardless of what was missed in between.
+
+<DecisionCard
+  decision="Start with scheduled full rebuilds, and only move to incremental or event-driven sync once staleness is a measured problem, not a hypothetical one."
+  rationale="The operational cost of the more sophisticated options is real and ongoing, and it buys freshness the product frequently doesn't need yet. A nightly rebuild that's simple and self-healing beats an event-driven pipeline that's fast but occasionally silently wrong."
+  alternative="Event-driven sync from day one — the right call when staleness genuinely can't wait a day (a support system reflecting policy changes, for example), wrong as a default for the more common case where nobody has actually measured what staleness costs."
+/>

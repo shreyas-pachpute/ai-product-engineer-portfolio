@@ -1,0 +1,24 @@
+---
+title: "Stop reaching for a vector database by default"
+type: "note"
+theme: "tools"
+summary: "For a few hundred documents, a vector database is solving a scale problem you don't have yet."
+publishedAt: "2026-07-10"
+featured: true
+order: 4
+---
+
+A recurring pattern in early-stage RAG builds: reach for Pinecone or Qdrant before checking whether the corpus is even large enough to need one.
+
+## When keyword search is enough
+
+For a few hundred to a few thousand documents, a well-tuned BM25 index — or even SQLite's FTS5 — returns comparable retrieval quality to a vector database, with no embedding cost, no reindexing pipeline, and no new infrastructure to operate. The corpus has to get genuinely large, or the queries genuinely semantic (paraphrase-heavy, little keyword overlap with the source text), before a vector index earns its complexity.
+
+<Callout type="insight">
+  The honest test isn't "would a vector database help." Almost anything helps a
+  little. It's "does the keyword baseline actually fail on real queries" — and
+  until that comparison has actually been run, the vector database is a guess
+  wearing infrastructure.
+</Callout>
+
+Hybrid search — combining both — is usually the right endpoint eventually. It's just rarely the right starting point.

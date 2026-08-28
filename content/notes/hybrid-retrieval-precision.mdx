@@ -1,0 +1,50 @@
+---
+title: "What actually moved retrieval precision in a hybrid search setup"
+type: "report"
+theme: "evaluation"
+summary: "Field notes from tuning a hybrid dense-plus-sparse retrieval pipeline — what mattered, what didn't, and the fusion formula underneath it."
+publishedAt: "2026-07-28"
+featured: false
+order: 1
+---
+
+## Setup
+
+A dense retriever (embedding similarity) and a sparse retriever (BM25) each return their own ranked list of candidate documents for a query. The question this report is actually about: once you have both lists, what's worth doing to combine and improve them, and what's mostly wasted effort.
+
+## The fusion formula
+
+Reciprocal Rank Fusion combines rankings from multiple retrievers without needing their scores to be on comparable scales — which matters, because a cosine similarity and a BM25 score aren't measuring the same thing and shouldn't be averaged directly:
+
+$$
+\text{RRF}(d) = \sum_{i} \frac{1}{k + \text{rank}_i(d)}
+$$
+
+where $\text{rank}_i(d)$ is document $d$'s position in retriever $i$'s ranked list, and $k$ is a constant — commonly 60 — that dampens how much a single retriever's top result can dominate the fused ranking.
+
+## What moved the needle, and what didn't
+
+| Change                                        | Precision impact |
+| --------------------------------------------- | ---------------- |
+| Adding sparse (BM25) alongside dense-only     | Large            |
+| Increasing fusion constant `k` from 60 to 100 | Negligible       |
+| Reranking the top 50 with a cross-encoder     | Large            |
+| Switching to a larger embedding model alone   | Small            |
+
+<Metrics
+  items={[
+    {
+      label: "Retrieval approach",
+      before: "Dense embeddings only",
+      after: "Hybrid (dense + BM25), reranked",
+    },
+    {
+      label: "Where the difference showed up",
+      before:
+        "Exact-match queries (product codes, error strings) missed entirely",
+      after: "Sparse component catches literal matches dense embeddings miss",
+    },
+  ]}
+/>
+
+The pattern worth remembering: retrieval _method_ diversity (adding a fundamentally different signal, then reranking with a model built for relevance rather than similarity) moved precision. Tuning parameters within a single method mostly didn't. It's a more general point than retrieval — the biggest gains usually come from adding a genuinely different way of looking at the problem, not from tuning the first one harder.

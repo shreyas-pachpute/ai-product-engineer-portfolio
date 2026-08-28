@@ -1,0 +1,155 @@
+---
+title: "Document Intelligence Pipeline"
+category: "RAG & Knowledge"
+tier: "signature"
+icon: "knowledge"
+problem: "Manual review was the bottleneck — hours of reading to pull structured data out of unstructured PDFs and scans."
+summary: "A layout-aware extraction pipeline that turns unstructured documents into validated structured data, with uncertain fields routed to a human instead of guessed."
+timeline: "6 weeks"
+publishedAt: "2026-06-01"
+featured: true
+order: 3
+---
+
+## The Problem
+
+Every incoming document — invoices, intake forms, scanned contracts —
+needed someone to read it and re-type the important fields into a
+system of record. None of the documents shared a single layout. Some
+were clean PDFs, some were phone-camera photos of paper forms, some
+were scans with a coffee ring on them. The team doing this by hand
+wasn't slow because they were bad at their jobs; they were slow because
+the problem is genuinely hard to automate with a fixed template.
+
+That last part matters. A rules-based parser — regex on known field
+positions — would have been faster to build and cheaper to run. It
+also would have broken on the first document that didn't match the
+template, which was most of them. That's the actual argument for a
+model here: not "AI is powerful," but "the input distribution is too
+irregular for fixed rules, and the cost of a wrong extraction is lower
+than the cost of a missed one, as long as uncertain cases get flagged
+instead of guessed."
+
+## The Constraint
+
+The first version I didn't build: feeding raw document images directly
+into a vision-capable LLM and asking it to return JSON. It's the
+fastest thing to prototype, and it's exactly what breaks quietly in
+production — a model will confidently return a well-formed JSON object
+with a wrong number in it, and nothing in that response tells you it's
+wrong.
+
+<DecisionCard
+  decision="Layout-aware OCR and field extraction first, LLM reasoning second — not a single vision-model call."
+  rationale="Splitting 'read the text and know where it sits on the page' from 'decide what the text means' makes each half independently testable. OCR + layout parsing gives bounding boxes and confidence scores per token, which the extraction step can actually use to know when it doesn't know something."
+  alternative="A single multimodal LLM call per document — simpler pipeline, but confidence is implicit in the model's tone, not a number you can threshold against, and there was no reliable way to route a bad extraction to a human before it reached the system of record."
+/>
+
+## The Architecture
+
+<ArchitectureBlock
+  title="Request flow"
+  steps={[
+    "Document ingest",
+    "OCR + layout parse",
+    "Field extraction (schema-constrained)",
+    "Confidence check",
+    "Auto-accept or human review",
+    "Structured record",
+  ]}
+/>
+
+Layout-aware OCR produces text with position and confidence data
+attached, not just a text blob. That feeds a field-extraction step
+constrained to a schema — the model doesn't get to freeform an answer,
+it has to fill in a validated shape:
+
+```python
+class InvoiceFields(BaseModel):
+    vendor_name: str
+    invoice_number: str
+    total_amount: Decimal
+    due_date: date
+    confidence: dict[str, float]  # per-field, from the OCR/extraction layer
+```
+
+Every field carries its own confidence score, sourced from the OCR
+layer's positional certainty and the extraction step's agreement with
+it. That score is what the next step actually acts on.
+
+## The Hard Parts
+
+The genuinely hard part wasn't extraction — it was deciding the
+confidence threshold that separates "trust this" from "send it to a
+human." Set it too low and the review queue backs up with fields that
+were actually fine. Set it too high and wrong data quietly reaches the
+system of record, which is worse than the manual process it replaced.
+
+<Timeline
+  items={[
+    {
+      label: "Week 1–2",
+      description:
+        "Layout-aware OCR and the extraction schema, tested against a held-out set of the messiest real documents — not the clean ones.",
+    },
+    {
+      label: "Week 3–4",
+      description:
+        "Confidence threshold tuned per field type, not globally — a wrong vendor name and a wrong due date don't carry the same downstream cost, so they don't get the same bar.",
+    },
+    {
+      label: "Week 5",
+      description:
+        "Human-review interface for flagged fields, designed so correcting a field takes one click, not a full re-entry of the document.",
+    },
+    {
+      label: "Week 6",
+      description:
+        "Shadow mode — the pipeline ran alongside manual review without being trusted yet, so its accuracy was measured against real corrections before it went live.",
+    },
+  ]}
+/>
+
+<Callout type="insight">
+  A per-field confidence threshold beat a single global one by a wide margin.
+  Some fields (dates, amounts) are cheap to get slightly wrong and easy for a
+  human to spot-check; others (vendor identity) are expensive to get wrong and
+  worth a stricter bar. Treating "confidence" as one number for the whole
+  document was the biggest early mistake.
+</Callout>
+
+## Shipping It
+
+The extraction schema is versioned like an API contract — a field
+rename or a new required field is a migration, not a silent breaking
+change to whatever consumes the output. Every extraction run logs its
+per-field confidence scores and whether a human corrected the result,
+which became the eval set for tuning the next version of the
+threshold, not a one-time calibration.
+
+<MediaBlock caption="Review queue UI — flagged fields shown inline against the source document, not as a bare list of values to re-key." />
+
+## The Outcome
+
+<Metrics
+  items={[
+    {
+      label: "Review time per document",
+      before: "Full manual read and re-entry",
+      after: "Spot-check on flagged fields only",
+    },
+    {
+      label: "Human review scope",
+      before: "Every field, every document",
+      after: "Only fields below the confidence bar",
+    },
+  ]}
+/>
+
+The honest measure of success here wasn't "the model is accurate" — it
+was that the humans in the loop stopped reading full documents and
+started reviewing exceptions, which is a fundamentally faster kind of
+work. If I rebuilt this today, the first thing I'd change is capturing
+reviewer corrections as a structured signal from day one instead of
+week five — that data is what makes the threshold get better over
+time instead of staying fixed at its launch value.
