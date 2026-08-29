@@ -2,9 +2,11 @@ import type { ComponentType, SVGProps } from "react";
 import {
   AgentsIcon,
   InfraIcon,
+  MultiAgentIcon,
 } from "@/components/sections/capabilities/icons";
 import { DataInvestigationVisual } from "@/components/agents/data-investigation-visual";
 import { ResourcePlannerVisual } from "@/components/agents/resource-planner-visual";
+import { AccountIntelligenceVisual } from "@/components/agents/account-intelligence-visual";
 
 /**
  * Same honesty constraint as featured-work/content.ts: no fabricated
@@ -21,7 +23,7 @@ import { ResourcePlannerVisual } from "@/components/agents/resource-planner-visu
 export const FEATURED_AGENTS_EYEBROW = "AI Agents";
 export const FEATURED_AGENTS_HEADING = "Live systems, not slide decks.";
 export const FEATURED_AGENTS_SUBHEADING =
-  "Two agents built end-to-end and verified against real, constructed scenarios — the architecture, the guardrails, and the test suite that backs each claim.";
+  "Three agents built end-to-end and verified against real, constructed scenarios — the architecture, the guardrails, and the test suite that backs each claim.";
 
 export type AgentProject = {
   slug: string;
@@ -65,5 +67,20 @@ export const AGENT_PROJECTS: AgentProject[] = [
       "22/22 tests passing, including exact hand-verified scores across four constructed scenarios — and the explanation prompt never receives a raw cost-rate figure at all, so it has nothing to leak.",
     hardPart:
       "Saying no to agentic complexity — the disciplined call here was recognizing this is a solved optimization problem, not reframing it as multiple LLM agents reasoning about it because that sounds more sophisticated.",
+  },
+  {
+    slug: "ai-account-intelligence",
+    category: "Multi-Agent Research",
+    title: "AI Company Research & Account Intelligence Platform",
+    icon: MultiAgentIcon,
+    visual: AccountIntelligenceVisual,
+    problem:
+      "General-purpose AI research tools blend genuine facts with confident-sounding inference with no clear line between them — dangerous input when a rep might repeat a claim to a prospect.",
+    approach:
+      "A Fact-Gathering Agent with real web-search access that may only state what a source says, and a Hypothesis Agent that reasons over its sourced output with zero independent tool access of its own — a genuinely one-way information flow.",
+    value:
+      "The separation is enforced in code, not prompted: a test parses the Hypothesis Agent's actual source and asserts it imports nothing from the search layer. 16/16 tests passing, real Tavily search verified live.",
+    hardPart:
+      "Guaranteeing the separation holds under real-world complexity, not just in the prompt — which is exactly why it's verified by a test reading the agent's own source code, not left as a documented intention.",
   },
 ];

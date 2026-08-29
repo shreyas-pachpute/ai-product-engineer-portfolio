@@ -1,0 +1,85 @@
+---
+title: "AI Company Research & Account Intelligence Platform"
+category: "Multi-Agent Research"
+icon: "multiAgent"
+problem: "General-purpose AI research tools blend genuine facts with confident-sounding inference with no clear line between them — dangerous input when a rep might repeat a claim to a prospect."
+summary: "A structurally separated two-agent system: a Fact-Gathering Agent that can search the web and may only state what a source says, and a Hypothesis Agent that reasons over its sourced output with zero independent tool access of its own."
+stack: ["Python", "Google Gemini 2.5 Flash-Lite", "Tavily Search API", "Pydantic"]
+highlights:
+  - "Fact-Gathering and Hypothesis agents with a genuinely one-way information flow — not two roles sharing the same tools"
+  - "The separation is enforced in code, not prompted: a test parses the Hypothesis Agent's actual source and asserts it imports nothing from the search layer"
+  - "Fact and Hypothesis are structurally distinct schemas — a fact requires a source URL, a hypothesis has no source field to fabricate one into"
+  - "Deterministic grounding validators: every fact's source must have actually appeared in the search results it was extracted from"
+  - "16/16 tests passing, real Tavily search verified live against real companies"
+publishedAt: "2026-08-29"
+repoUrl: "https://github.com/shreyas-pachpute/ai-account-intelligence"
+featured: true
+---
+
+## The Problem
+
+Ask a general-purpose AI chat tool to research a company and it will
+happily blend a verified fact, a reasonable inference, and an outright
+guess into the same confident paragraph, with nothing marking where one
+ends and the next begins. That's a real, specific risk for anything a
+salesperson might repeat on a call — the honest engineering problem here
+wasn't "make research faster," it was "make the boundary between verified
+and inferred impossible to lose."
+
+## The Decision
+
+<DecisionCard
+  decision="Two agents with a deliberately one-way information flow, not one agent instructed to label its claims carefully."
+  rationale="A single agent that both searches and speculates can always smuggle an inference in dressed as a finding — it has the tools to go find 'supporting evidence' for whatever it already wants to claim. Splitting fact-gathering from hypothesis-generation, and giving the second agent literally no search access, makes that failure mode structurally impossible rather than just discouraged."
+  alternative="One agent with a strict prompt to tag every claim as fact or inference. Cheaper to build, but the safety property lives entirely in the model's discretion in that version — exactly the thing a determined or degraded model can drift away from over time."
+/>
+
+## The Architecture
+
+<ArchitectureBlock
+  title="Research request flow"
+  steps={[
+    "Deterministic initial query set (5 categories, zero LLM cost)",
+    "Fact-Gathering Agent: extract sourced facts, flag coverage gaps",
+    "If a gap was flagged: one bounded follow-up search + re-extraction round",
+    "Hypothesis Agent: reason over the finished fact list only — no tools",
+    "Grounding validation before the report is shown",
+  ]}
+/>
+
+The Hypothesis Agent's function signature is the whole enforcement
+mechanism: it takes a company name and a list of already-sourced facts,
+nothing else. There's no search client to import, so there's nothing to
+accidentally wire up later either — the constraint doesn't rely on anyone
+remembering not to add it.
+
+<Callout type="insight">
+  This isn't just a design claim. tests/test_architectural_separation.py
+  parses hypothesis.py's actual AST and asserts it contains no import of
+  the search module — the same file that would break loudly if someone
+  later "helpfully" gave the Hypothesis Agent its own search tool for
+  convenience. Verified by testing, not just documented as intent.
+</Callout>
+
+## Untrusted Content, By Necessity
+
+A researched company's own web content is exactly the kind of thing an
+adversarial actor could use to try to manipulate a research agent — and
+this stopped being theoretical during the build. Tavily's own setup page
+contained a line telling an agent reading it to fetch and execute a remote
+script. Declined, and it directly shaped how search results are fed to the
+model here: every result is wrapped in an explicit delimiter with an
+instruction that its content is data to analyze, never instructions to
+follow.
+
+## The Result
+
+Facts and hypotheses are structurally different shapes, not the same shape
+with a label: a `FactFinding` requires a source URL, title, and the exact
+supporting excerpt; a `Hypothesis` has no source field at all. Two
+deterministic validators run after every research pass — one confirms
+every cited source URL actually appeared in the search results the
+extraction step saw, the other confirms every hypothesis only cites fact
+IDs that actually exist. 16 tests cover the query templates, the search
+response parser, the grounding validators, and the architectural
+separation itself, all with zero API cost.

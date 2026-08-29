@@ -15,6 +15,7 @@ import { Reveal, RevealGroup } from "@/components/motion";
 import { workIconRegistry } from "@/components/work/icon-registry";
 import { DataInvestigationVisual } from "@/components/agents/data-investigation-visual";
 import { ResourcePlannerVisual } from "@/components/agents/resource-planner-visual";
+import { AccountIntelligenceVisual } from "@/components/agents/account-intelligence-visual";
 import { cn } from "@/lib/utils/cn";
 import type { AgentEntry } from "@/lib/content/agents";
 
@@ -25,6 +26,7 @@ type AgentIndexProps = {
 const agentVisualRegistry: Record<string, ComponentType> = {
   "ai-data-investigation": DataInvestigationVisual,
   "ai-resource-planner": ResourcePlannerVisual,
+  "ai-account-intelligence": AccountIntelligenceVisual,
 };
 
 /**

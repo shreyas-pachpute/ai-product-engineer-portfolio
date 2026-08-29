@@ -6,3 +6,4 @@ export * from "@/components/agents/agent-case-study";
 export * from "@/components/agents/agent-index";
 export * from "@/components/agents/data-investigation-visual";
 export * from "@/components/agents/resource-planner-visual";
+export * from "@/components/agents/account-intelligence-visual";
