@@ -1,89 +1,99 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { fontVariables } from "@/lib/fonts";
-import { Providers } from "@/components/providers/providers";
-import { SkipLink, Footer, PageTransition } from "@/components/layout";
-import { Navbar } from "@/components/nav";
-import { AmbientField } from "@/components/effects/ambient-field";
-import { CursorSpotlight } from "@/components/effects/cursor-spotlight";
-import { CursorGlowController } from "@/components/effects/cursor-glow-controller";
-import { SpotlightController } from "@/components/effects/spotlight-controller";
-import { CommandPalette } from "@/components/command";
-import { buildCommandIndex } from "@/lib/command/command-index";
-import { surfaceBaseHex } from "@/lib/design-tokens";
-import { JsonLd } from "@/components/seo/json-ld";
-import { siteGraph } from "@/lib/seo/json-ld";
-import {
-  AUTHOR_NAME,
-  SITE_DESCRIPTION,
-  SITE_NAME,
-  SITE_URL,
-} from "@/lib/seo/site-config";
+import { INTRO_HEAD_SCRIPT } from "@/lib/intro";
+import { DESCRIPTION, IDENTITY, SITE_URL, TAGLINE } from "@/lib/site";
 import "@/app/globals.css";
 
-/**
- * `metadataBase` is what lets every route's relative OG/canonical URLs
- * (and the auto-discovered opengraph-image files) resolve to absolute
- * ones — without it, Next warns and falls back to inferring a URL from
- * the deployment environment, which is fine on Vercel but not something
- * to rely on silently. Reads `NEXT_PUBLIC_SITE_URL`, defaulting to
- * localhost for local builds; set that env var to the real domain once
- * one exists.
- */
+const TITLE = `${IDENTITY.name} — ${IDENTITY.role}`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: SITE_NAME,
-    template: `%s | ${AUTHOR_NAME}`,
+    default: TITLE,
+    template: `%s | ${IDENTITY.name}`,
   },
-  description: SITE_DESCRIPTION,
-  authors: [{ name: AUTHOR_NAME, url: SITE_URL }],
-  creator: AUTHOR_NAME,
-  publisher: AUTHOR_NAME,
-  robots: {
-    index: true,
-    follow: true,
-  },
+  description: DESCRIPTION,
+  applicationName: IDENTITY.name,
+  authors: [{ name: IDENTITY.name, url: SITE_URL }],
+  creator: IDENTITY.name,
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true },
   openGraph: {
-    siteName: SITE_NAME,
+    type: "profile",
+    url: "/",
+    siteName: IDENTITY.name,
+    title: TITLE,
+    description: TAGLINE,
     locale: "en_US",
-    type: "website",
   },
   twitter: {
     card: "summary_large_image",
+    title: TITLE,
+    description: TAGLINE,
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: surfaceBaseHex,
-  colorScheme: "dark",
+  // The paper colour: what a phone's browser chrome is tinted with.
+  themeColor: "#fbf3e4",
+  colorScheme: "light",
 };
+
+/**
+ * Structured data: who this site is about, and where else they are.
+ * Only the facts the site states — name, title, contact links.
+ */
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Person",
+      "@id": `${SITE_URL}/#person`,
+      name: IDENTITY.name,
+      jobTitle: IDENTITY.role,
+      url: SITE_URL,
+      email: `mailto:${IDENTITY.email}`,
+      sameAs: IDENTITY.links.map((link) => link.href),
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: TITLE,
+      description: DESCRIPTION,
+      inLanguage: "en",
+      about: { "@id": `${SITE_URL}/#person` },
+    },
+  ],
+};
+
+/**
+ * Without JavaScript nothing pins or switches the chapters, so they fall
+ * back to an ordinary document: every chapter in order, on paper.
+ */
+const NO_SCRIPT_CSS = `.stage,.rail,.pins,.fold-control{display:none}.chapter,.chapter:last-of-type{height:auto}.panel{position:static;height:auto;padding:2.5rem var(--gutter);color:var(--color-ink)}.panel--harbour{padding-top:calc(var(--header-h) + 1rem)}.fade,.rise>span,.unfold,.tip,.letter,.sweep,.glide,.anatomy__row{opacity:1!important;animation:none!important;-webkit-mask-image:none;mask-image:none}.site-header{position:absolute}`;
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
-  // Built here, in a Server Component, so the `fs`-backed content loaders
-  // never cross the client boundary — the palette receives a finished,
-  // serializable array.
-  const commandIndex = buildCommandIndex();
-
   return (
+    // `suppressHydrationWarning`: the head script and the scroll driver
+    // write data-* attributes onto this element outside React, on purpose.
     <html lang="en" className={fontVariables} suppressHydrationWarning>
+      <head>
+        {/* Decides before first paint whether the opening plays. See lib/intro.ts. */}
+        <script dangerouslySetInnerHTML={{ __html: INTRO_HEAD_SCRIPT }} />
+        <noscript>
+          <style>{NO_SCRIPT_CSS}</style>
+        </noscript>
+      </head>
       <body>
-        <JsonLd data={siteGraph()} />
-        <AmbientField />
-        <CursorSpotlight />
-        <Providers>
-          <CursorGlowController />
-          <SpotlightController />
-          <SkipLink />
-          <Navbar />
-          <main id="main-content" tabIndex={-1} className="pt-32 outline-none">
-            <PageTransition>{children}</PageTransition>
-          </main>
-          <Footer />
-          <CommandPalette items={commandIndex} />
-        </Providers>
+        {children}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </body>
     </html>
   );

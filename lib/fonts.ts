@@ -1,62 +1,43 @@
-import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Fraunces, Mona_Sans } from "next/font/google";
 
 /**
- * Font pairing rationale (Architecture Doc §15):
- * Inter alone is the single most common choice in this design tier (Linear,
- * Vercel, Raycast all ship it end-to-end). Splitting the pairing keeps Inter
- * for body copy, where neutral legibility wins, and gives display type its
- * own voice with Space Grotesk — a geometric sans with enough character to
- * read as intentional rather than templated at hero scale.
+ * Two typefaces, with clearly different jobs.
  *
- * All three are self-hosted automatically by next/font (no runtime request
- * to Google Fonts, no layout shift from a late-loading @font-face swap).
+ * FRAUNCES — the voice. A soft, slightly wonky old-style serif, loaded as
+ * one variable file with four axes:
+ *   wght 100–900   weight
+ *   opsz 9–144     optical size (the browser picks it from font-size)
+ *   SOFT 0–100     how rounded the terminals are
+ *   WONK 0–1       the "leaning" alternates for h, n, m…
+ * It sets every headline and the wordmark. At display size with SOFT up it
+ * reads like lettering cut for a print, which is the register the whole
+ * illustrated world is in — and it is about as far from the grotesque of a
+ * typical developer site as a typeface can get while staying legible.
  *
- * All three load as VARIABLE fonts — note the absence of a `weight` option
- * below, which is what selects the variable file rather than a set of static
- * instances. This matters for more than file count:
+ * MONA SANS — the instrument. A plain grotesque for everything that is
+ * read rather than looked at: body copy, labels, buttons. Its width axis
+ * (75–125) is used for small labels, which are set wide instead of
+ * uppercase-and-tracked.
  *
- *  - `font-variation-settings` becomes animatable, which is what the hero's
- *    weight-settle reveal is built on. Static instances can only cross-fade
- *    between two files; a variable axis interpolates continuously.
- *  - Any weight in the axis range is available, not just the three that were
- *    pre-declared — so a 550 or a 300 is now a design option rather than a
- *    request to add another font file.
- *
- * Axis ranges (verified against next/font's Google font data, not assumed):
- *   Space Grotesk  wght 300–700
- *   Inter          wght 100–900, opsz 14–32
- *   JetBrains Mono wght 100–800
+ * Both are self-hosted by next/font: no request to Google at runtime, and a
+ * metric-matched fallback so the swap does not shift layout.
  */
-
-export const fontDisplay = Space_Grotesk({
+export const fontDisplay = Fraunces({
   subsets: ["latin"],
-  variable: "--font-display",
+  // Italic is used for single words of emphasis in headlines.
+  style: ["normal", "italic"],
+  axes: ["SOFT", "WONK", "opsz"],
+  variable: "--font-fraunces",
   display: "swap",
 });
 
-/**
- * `axes: ["opsz"]` opts into Inter's optical-size axis on top of weight.
- * Paired with `font-optical-sizing: auto` in globals.css, the browser then
- * retunes letterforms by rendered size automatically — tighter spacing and
- * thinner hairlines at display scale, looser and sturdier at caption scale.
- * It is the difference between type that was scaled and type that was drawn
- * for its size, and it costs one axis.
- */
-export const fontSans = Inter({
+export const fontSans = Mona_Sans({
   subsets: ["latin"],
-  axes: ["opsz"],
-  variable: "--font-sans",
+  axes: ["wdth"],
+  variable: "--font-mona",
   display: "swap",
 });
 
-export const fontMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-});
-
-export const fontVariables = [
-  fontDisplay.variable,
-  fontSans.variable,
-  fontMono.variable,
-].join(" ");
+export const fontVariables = [fontDisplay.variable, fontSans.variable].join(
+  " ",
+);
