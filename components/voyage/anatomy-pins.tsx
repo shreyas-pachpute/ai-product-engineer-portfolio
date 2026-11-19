@@ -19,7 +19,7 @@ import { voyage } from "@/lib/voyage";
 const LEAD: Record<AnatomyPart, { angle: number; length: number }> = {
   keel: { angle: 118, length: 48 },
   ballast: { angle: 78, length: 50 },
-  hull: { angle: 205, length: 58 },
+  hull: { angle: 128, length: 46 },
   stores: { angle: 52, length: 46 },
   compass: { angle: -52, length: 56 },
   rigging: { angle: -18, length: 72 },

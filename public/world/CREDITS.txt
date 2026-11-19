@@ -1,0 +1,5 @@
+ship.glb
+  "Dutch Ship Large 01" from Poly Haven (https://polyhaven.com/a/dutch_ship_large_01)
+  Licence: CC0 1.0 (public domain)
+  Model, textures, cleanup: James Ray Cock. Sails: Rico Cilliers. Original model: Nicolo Zubbini.
+  Compressed for the web (meshopt geometry, 1k WebP textures); otherwise unmodified.

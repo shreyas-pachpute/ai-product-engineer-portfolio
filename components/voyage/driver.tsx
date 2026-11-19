@@ -21,6 +21,9 @@ import { voyage } from "@/lib/voyage";
  *      night, for the header's colour), `data-port` (which chapter the
  *      rail should mark) and `data-scene` (the backdrop behind the canvas).
  *
+ * Links marked `data-go` travel to a chapter and take keyboard focus with
+ * them, to that chapter's heading.
+ *
  * It only writes to the DOM when a value actually changes, so a scroll
  * frame usually costs one subtraction and a loop of comparisons.
  *
@@ -31,7 +34,16 @@ import { voyage } from "@/lib/voyage";
  * travels there, and the reader sees what they are focused on.
  */
 
-const SCENES = ["dawn", "noon", "paper", "storm", "sunrise"] as const;
+/** The backdrop scenes of the three daytime chapters before the storm. */
+const SCENES = ["dawn", "noon", "paper"] as const;
+
+/**
+ * The stretch of the crossing that is dark enough for light type. The ends
+ * sit at the midpoints of the two palette blends in the world's timeline
+ * (drawing board to storm, storm to sunrise).
+ */
+const NIGHT_FROM = 3.04;
+const NIGHT_TO = 4.05;
 
 type Beat = { element: HTMLElement; from: number; to: number; on: boolean };
 
@@ -63,6 +75,12 @@ export function VoyageDriver() {
     let frame = 0;
     let tone = root.dataset.tone ?? "";
     let port = -1;
+    let scene = "";
+    let first = true;
+    // What had focus when the window lost it, and what this file focused
+    // itself: two kinds of focus event that are not the reader moving.
+    let heldAtBlur: Element | null = null;
+    let placed: Element | null = null;
 
     function measure(): void {
       const y = window.scrollY;
@@ -98,7 +116,10 @@ export function VoyageDriver() {
     function apply(): void {
       frame = 0;
       const c = coordinateAt(window.scrollY);
-      voyage.setChapter(c);
+      // Arriving from another page, the world is somewhere else entirely:
+      // cut to the crossing rather than flying there through every scene.
+      voyage.setChapter(c, first);
+      first = false;
 
       for (const beat of beats) {
         const on = c >= beat.from && c < beat.to;
@@ -108,7 +129,12 @@ export function VoyageDriver() {
         }
       }
 
-      const nextTone = c > 3.02 && c < 4.08 ? "night" : "day";
+      // Day or night flips where the sky behind the header is halfway
+      // between the two: before that point dark type reads better, after
+      // it light type does. (Measured, not guessed: flipping late left
+      // cream type on an orange sky.)
+      const night = c > NIGHT_FROM && c < NIGHT_TO;
+      const nextTone = night ? "night" : "day";
       if (nextTone !== tone) {
         tone = nextTone;
         root.dataset.tone = nextTone;
@@ -120,7 +146,18 @@ export function VoyageDriver() {
       if (nextPort !== port) {
         port = nextPort;
         root.dataset.port = String(nextPort);
-        root.dataset.scene = SCENES[nextPort] ?? "dawn";
+      }
+
+      // The flat backdrop changes scene in step with the tone, so the
+      // header is never the wrong colour for what is behind it.
+      const nextScene = night
+        ? "storm"
+        : c >= NIGHT_TO
+          ? "sunrise"
+          : (SCENES[Math.min(2, nextPort)] ?? "dawn");
+      if (nextScene !== scene) {
+        scene = nextScene;
+        root.dataset.scene = nextScene;
       }
     }
 
@@ -155,12 +192,58 @@ export function VoyageDriver() {
       event.preventDefault();
       voyage.go(Number(link.dataset.go));
       const hash = link.getAttribute("href");
-      if (hash?.startsWith("#")) history.replaceState(null, "", hash);
+      if (!hash?.startsWith("#")) return;
+      history.replaceState(null, "", hash);
+      // Take focus along to the chapter's heading, as a normal in-page
+      // link would. Otherwise "Skip to contact" scrolls the page but
+      // leaves a keyboard user ten Tab presses away from the contact.
+      const heading = document.getElementById(hash.slice(1) + "-title");
+      if (heading) {
+        placed = heading;
+        heading.focus({ preventScroll: true });
+      }
+    }
+
+    /**
+     * The hash changed without going through a link above: typed into the
+     * address bar, or reached with Back or Forward. Two things need doing.
+     * The browser stops at the chapter's top edge, before any of its text
+     * has appeared, so land inside it instead. And the browser made that
+     * history entry without telling the router: going Back to an entry the
+     * router does not know changes the address but not the page. Marking
+     * the entry makes the router reload it, which shows the right page.
+     */
+    function onHashChange(): void {
+      const index = sections.findIndex(
+        (section) => `#${section.id}` === window.location.hash,
+      );
+      if (index >= 0) {
+        const target = Number(sections[index]!.dataset.target);
+        if (Number.isFinite(target)) {
+          measure();
+          window.scrollTo({ top: positionOf(target) });
+        }
+      }
+      if (!history.state) history.replaceState({}, "", window.location.href);
+    }
+
+    function onWindowBlur(): void {
+      heldAtBlur = document.activeElement;
     }
 
     /** Focus moved into a chapter that is not showing: go there. */
     function onFocusIn(event: FocusEvent): void {
       const target = event.target as Element | null;
+      // Coming back to the window re-announces whatever already had focus,
+      // and a heading focused by a link above is already being travelled
+      // to. Neither is the reader moving, so neither may move the page.
+      // Without this, switching tabs and back threw the reader to the
+      // chapter of whichever link they had last clicked.
+      const stale =
+        target !== null && (target === heldAtBlur || target === placed);
+      heldAtBlur = null;
+      placed = null;
+      if (stale) return;
       const beat = target?.closest<HTMLElement>("[data-from]");
       if (!beat || beat.hasAttribute("data-on")) return;
       const panel = target?.closest<HTMLElement>(".panel") ?? beat;
@@ -192,6 +275,8 @@ export function VoyageDriver() {
     window.addEventListener("resize", onResize);
     document.addEventListener("click", onClick);
     document.addEventListener("focusin", onFocusIn);
+    window.addEventListener("blur", onWindowBlur);
+    window.addEventListener("hashchange", onHashChange);
 
     return () => {
       cancelAnimationFrame(frame);
@@ -200,6 +285,8 @@ export function VoyageDriver() {
       window.removeEventListener("resize", onResize);
       document.removeEventListener("click", onClick);
       document.removeEventListener("focusin", onFocusIn);
+      window.removeEventListener("blur", onWindowBlur);
+      window.removeEventListener("hashchange", onHashChange);
       voyage.setNavigator(null);
     };
   }, []);

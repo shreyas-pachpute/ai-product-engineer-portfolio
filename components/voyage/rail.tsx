@@ -45,6 +45,8 @@ export function Rail() {
           className="rail__port"
           href={`#${entry.id}`}
           data-go={entry.target}
+          // The visible name is hidden on small screens; the link keeps it.
+          aria-label={entry.port}
           aria-current={index === 0 ? "step" : undefined}
           style={{ "--at": entry.target / LAST_CHAPTER } as CSSProperties}
         >

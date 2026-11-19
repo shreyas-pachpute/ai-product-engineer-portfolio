@@ -34,9 +34,9 @@ const eslintConfig = [
   },
   {
     // The exceptions are the places that *define* colour, or hand it to
-    // something that cannot read CSS: the 3D world's palettes (numbers for
+    // something that cannot read CSS: the 3D world's materials (numbers for
     // the GPU), and the browser-chrome colours in the manifest and viewport.
-    files: ["components/world/engine/**", "app/manifest.ts", "app/layout.tsx"],
+    files: ["components/world/sea/**", "app/manifest.ts", "app/layout.tsx"],
     rules: { "no-restricted-syntax": "off" },
   },
 ];

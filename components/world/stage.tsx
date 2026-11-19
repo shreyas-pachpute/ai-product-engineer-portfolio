@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { Mark } from "@/components/brand/logo";
 import { voyage } from "@/lib/voyage";
-import type { World, WorldQuality } from "./engine";
+import type { World, WorldQuality } from "./sea";
 
 /**
  * The stage: a fixed, full-viewport canvas behind the page, and the
@@ -26,11 +26,17 @@ import type { World, WorldQuality } from "./engine";
  * position changes, so it still tells the story without moving on its own.
  */
 
+/**
+ * A first guess at what this device can run. It only has to be roughly
+ * right: the world measures its own frame pacing and steps down by itself
+ * if the guess was optimistic (see the governor in sea/index.ts).
+ */
 function pickQuality(): WorldQuality {
   const cores = navigator.hardwareConcurrency ?? 8;
   const memory = (navigator as { deviceMemory?: number }).deviceMemory ?? 8;
   const phone = Math.min(window.screen.width, window.screen.height) < 700;
-  return cores <= 4 || memory <= 4 || phone ? "low" : "high";
+  if (phone || cores <= 4 || memory <= 4) return "low";
+  return cores >= 8 ? "high" : "medium";
 }
 
 export function Stage() {
@@ -41,13 +47,16 @@ export function Stage() {
     if (!canvas) return;
     const root = document.documentElement;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    // Screens too small for the stage get a plain document (globals.css).
+    const plain = window.matchMedia("(max-height: 17.5rem)");
     let world: World | null = null;
     let cancelled = false;
+    let stopBoat: (() => void) | null = null;
 
     function sync(): void {
       if (!world) return;
       world.setStill(reduced.matches);
-      world.setRunning(!reduced.matches && !document.hidden);
+      world.setRunning(!reduced.matches && !plain.matches && !document.hidden);
     }
 
     function resize(): void {
@@ -69,13 +78,21 @@ export function Stage() {
     /** A click on open water folds a paper boat (chapter two). */
     function onClick(event: MouseEvent): void {
       const target = event.target as Element | null;
-      if (target?.closest("a, button, input, textarea, select, [data-no-fold]"))
+      // Controls, text (which can be selected) and a boat's tag are not
+      // the water.
+      if (
+        target?.closest(
+          "a, button, input, h1, h2, p, li, header, nav, [data-no-fold]",
+        )
+      ) {
         return;
+      }
+      if (window.getSelection()?.toString()) return;
       voyage.fold(event.clientX, event.clientY);
     }
 
     async function start(): Promise<void> {
-      const { createWorld } = await import("./engine");
+      const { createWorld } = await import("./sea");
       if (cancelled) return;
       const created = await createWorld(canvas!, pickQuality());
       if (cancelled) {
@@ -94,6 +111,19 @@ export function Stage() {
       if (cancelled || world !== created) return;
       voyage.attachWorld(created);
       sync();
+      // While the opening plays, say where the paper boat is on screen, so
+      // the sheet can fold into a boat that lands exactly on it.
+      stopBoat = voyage.onFrame((readout) => {
+        const intro = root.dataset.intro;
+        if (intro !== "play" && intro !== "lift") {
+          stopBoat?.();
+          stopBoat = null;
+          return;
+        }
+        const boat = readout.boats[0];
+        if (!boat || boat.size <= 0) return;
+        root.dataset.boat = `${Math.round(boat.tipX)},${Math.round(boat.tipY)},${Math.round(boat.size)}`;
+      });
       // Two frames: one to render, one for the browser to present it.
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
@@ -110,6 +140,7 @@ export function Stage() {
     observer.observe(canvas);
     document.addEventListener("visibilitychange", sync);
     reduced.addEventListener("change", sync);
+    plain.addEventListener("change", sync);
     canvas.addEventListener("webglcontextlost", onContextLost);
     window.addEventListener("click", onClick);
 
@@ -118,8 +149,10 @@ export function Stage() {
       observer.disconnect();
       document.removeEventListener("visibilitychange", sync);
       reduced.removeEventListener("change", sync);
+      plain.removeEventListener("change", sync);
       canvas.removeEventListener("webglcontextlost", onContextLost);
       window.removeEventListener("click", onClick);
+      stopBoat?.();
       voyage.attachWorld(null);
       world?.dispose();
       world = null;

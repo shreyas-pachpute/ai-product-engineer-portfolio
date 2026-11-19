@@ -19,12 +19,13 @@
      8. Chrome            header, flag button, route rail
      9. Intro
     10. Reduced motion, no-script, 404
+    11. Print             the résumé as one A4 page
    ========================================================================== */
 
 /* 1. Tokens --------------------------------------------------------------- */
 
 @theme {
-  /* The palette. Mirrors BRAND in components/world/engine/palette.ts. */
+  /* The palette of the page. The 3D world is lit, not coloured from this. */
   --color-ink: #0b2a3f; /* navy: all text and every outline */
   --color-paper: #fbf3e4; /* cream: paper, sails, text at night */
   --color-vermilion: #ff4b2b; /* the sail: the one loud colour */
@@ -72,6 +73,8 @@
   --header-h: clamp(4.25rem, 9.5vh, 6rem);
   /* Where the sea meets the sky, as a share of the viewport height. */
   --horizon: 60%;
+  /* Ink, lightened: text for things drawn but not yet built (5:1 on paper). */
+  --pencil: #566b7b;
 
   --sky-a: #ff8e63;
   --sky-b: #ffd7a8;
@@ -242,6 +245,10 @@ a {
   translate: -50% -80%;
 }
 
+:root[data-world="fallback"] .fold-control {
+  display: none;
+}
+
 :root[data-world="fallback"][data-scene="storm"] .backdrop__boat {
   color: var(--color-paper);
 }
@@ -302,6 +309,19 @@ a {
 
 .panel[data-on] :is(a, button) {
   pointer-events: auto;
+}
+
+/* Text that is showing can be selected and copied like any other text. */
+.panel[data-on] :is(h1, h2, p, li):is(:not([data-from]), [data-on]) {
+  pointer-events: auto;
+}
+
+/*
+ * Chapter headings take focus when a link travels to them (so the next Tab
+ * continues from there). They are not controls, so they show no ring.
+ */
+[tabindex="-1"]:focus {
+  outline: none;
 }
 
 /* 6. Motion ---------------------------------------------------------------
@@ -494,6 +514,58 @@ a {
   text-wrap: pretty;
 }
 
+/* Who this is, and what the picture stands for */
+
+.identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.85rem;
+}
+
+.identity__name {
+  font-family: var(--font-display);
+  font-weight: 620;
+  font-variation-settings:
+    "SOFT" 100,
+    "WONK" 1;
+  font-size: clamp(1.2rem, 1rem + 0.75vw, 1.65rem);
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+}
+
+.identity__role {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 0.92rem;
+}
+
+.identity__role::before {
+  content: "";
+  width: 1.6rem;
+  height: 1.5px;
+  background: currentColor;
+}
+
+/* The key: one plain line saying what the scene stands for. It is marked
+   with a small pennant, the same shape as the site's buttons. */
+.key {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 34rem;
+}
+
+.key::before {
+  content: "";
+  flex: none;
+  width: 0.7rem;
+  height: 0.55rem;
+  background: var(--color-vermilion);
+  clip-path: polygon(0 0, 100% 0, 62% 50%, 100% 100%, 0 100%);
+}
+
 /* Harbour */
 
 .harbour {
@@ -551,6 +623,325 @@ a {
   min-height: 1.25em;
 }
 
+/* Leaning on the boats -------------------------------------------------------
+
+   Invisible buttons that the world keeps over each paper boat, and the
+   things tied to them: a small label, a tag on a string, a slip of paper.
+   All of it is the ruled notebook sheet the boats are folded from.
+   (components/voyage/boat-tags.tsx positions every piece each frame.)
+   ------------------------------------------------------------------------- */
+
+.boats {
+  --sheet: #f3f0e8;
+  --rule: rgb(96 128 178 / 0.5);
+  --margin: rgb(196 82 76 / 0.6);
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    visibility 0s;
+}
+
+.panel:not([data-on]) .boats {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 220ms ease,
+    visibility 0s 220ms;
+}
+
+:root[data-world="fallback"] .boats {
+  display: none;
+}
+
+.boat-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100px;
+  height: 100px;
+  padding: 0;
+  border: 0;
+  background: none;
+  transform-origin: 0 0;
+  cursor: pointer;
+  /* The shape of a paper boat, sail and hull, so that where two boats
+     overlap on screen a press goes to the one actually under the finger. */
+  clip-path: polygon(
+    50% 0,
+    72% 50%,
+    100% 58%,
+    84% 100%,
+    16% 100%,
+    0 58%,
+    28% 50%
+  );
+  /* Its focus ring is .boat-ring, which keeps its line weight at any size. */
+  outline: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.boat-handle[hidden] {
+  display: none;
+}
+
+.boat-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100px;
+  height: 100px;
+  overflow: visible;
+  transform-origin: 0 0;
+  opacity: 0;
+}
+
+.boat-ring rect {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke: var(--color-ink);
+  stroke-width: 5;
+}
+
+.boat-ring rect + rect {
+  stroke: var(--color-paper);
+  stroke-width: 2.5;
+  stroke-dasharray: 8 6;
+}
+
+/* "Lean on it": a paper label by the sail of a boat that can be pressed. */
+.boat-cue {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.36rem 1rem 0.36rem 0.6rem;
+  background: var(--sheet);
+  color: var(--color-ink);
+  white-space: nowrap;
+  /* Tilted a few degrees; the script adds that to its position. */
+  transform-origin: 0 100%;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 0.5rem) 50%, 100% 100%, 0 100%);
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+
+.boat-cue[data-on] {
+  opacity: 1;
+}
+
+.boat-cue::before,
+.boat-tag__ask::before,
+.boat-slip__part::before {
+  content: "";
+  flex: none;
+  width: 0.7rem;
+  height: 0.55rem;
+  background: var(--color-vermilion);
+  clip-path: polygon(0 0, 100% 0, 62% 50%, 100% 100%, 0 100%);
+}
+
+/* The string from the sail to the tag. */
+.boat-thread {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.boat-thread path {
+  fill: none;
+  stroke: var(--sheet);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: 0;
+  filter: drop-shadow(0 1px 0.5px rgb(11 42 63 / 0.6));
+}
+
+/* The tag: six things a product has to survive, on a luggage label. */
+.boat-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: min(18.5rem, calc(100vw - 1.25rem));
+  filter: drop-shadow(0 0.8rem 1.1rem rgb(11 42 63 / 0.3));
+  will-change: transform;
+}
+
+.boat-tag__sheet {
+  position: relative;
+  display: grid;
+  padding: 0.3rem 0.9rem 1.55rem 2.75rem;
+  color: var(--color-ink);
+  background:
+    linear-gradient(
+      90deg,
+      transparent 2.15rem,
+      var(--margin) 2.15rem,
+      var(--margin) calc(2.15rem + 1.5px),
+      transparent calc(2.15rem + 1.5px)
+    ),
+    var(--sheet);
+  rotate: -1.6deg;
+  transform-origin: 0 100%;
+  /* The corner the string ties to is cut off, as on a luggage label. */
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 100%,
+    1.7rem 100%,
+    0 calc(100% - 1.7rem)
+  );
+  pointer-events: auto;
+  animation: tag-open 440ms var(--ease-out) both;
+}
+
+/* The eyelet. */
+.boat-tag__sheet::after {
+  content: "";
+  position: absolute;
+  left: 0.62rem;
+  bottom: 0.5rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: rgb(11 42 63 / 0.8);
+  box-shadow: 0 0 0 2px #b59b62;
+}
+
+.boat-tag__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0 0.45rem;
+  border-bottom: 1.5px solid var(--rule);
+}
+
+.boat-tag__head span + span {
+  font-weight: 500;
+  color: var(--pencil);
+}
+
+.boat-tag__ask {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.35rem 0;
+  border: 0;
+  border-bottom: 1.5px solid var(--rule);
+  background: none;
+  color: inherit;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-style: italic;
+  font-weight: 540;
+  font-variation-settings:
+    "SOFT" 100,
+    "WONK" 1;
+  line-height: 1.12;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  transition: padding-left 180ms var(--ease-out);
+}
+
+/* The chosen line is marked in the margin, like a note beside a list. */
+.boat-tag__ask::before {
+  position: absolute;
+  left: -1.85rem;
+  top: 50%;
+  translate: 0 -50%;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.boat-tag__ask:is(:hover, :focus-visible) {
+  padding-left: 0.3rem;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.22em;
+}
+
+.boat-tag__ask:is(:hover, :focus-visible)::before {
+  opacity: 1;
+}
+
+.boat-tag__ask[data-found]::after {
+  content: "sunk";
+  margin-left: auto;
+  padding-left: 0.8rem;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-stretch: 118%;
+  font-weight: 620;
+  color: var(--pencil);
+}
+
+/* What would have held: a slip of the same paper, where the boat went down. */
+.boat-slip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  gap: 0.3rem;
+  max-width: min(21rem, calc(100vw - 1.25rem));
+  padding: 0.65rem 1rem 0.7rem;
+  background: var(--sheet);
+  color: var(--color-ink);
+  box-shadow: 0 0.7rem 1.6rem rgb(11 42 63 / 0.3);
+  animation: slip 6500ms ease both;
+}
+
+.boat-slip__held {
+  font-size: clamp(1.2rem, 1rem + 0.7vw, 1.5rem);
+  font-style: italic;
+  font-weight: 560;
+  line-height: 1.08;
+}
+
+.boat-slip__part {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--pencil);
+}
+
+@keyframes tag-open {
+  from {
+    opacity: 0;
+    transform: perspective(42rem) rotateX(-78deg);
+  }
+  45% {
+    opacity: 1;
+  }
+}
+
+@keyframes slip {
+  0% {
+    opacity: 0;
+    translate: 0 0.7rem;
+  }
+  6% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* Drawing board */
 
 .board {
@@ -579,11 +970,23 @@ a {
   grid-template-columns: 1.85rem 1fr;
   column-gap: 0.85rem;
   align-items: start;
-  opacity: 0.3;
-  transition: opacity 450ms ease;
+  /*
+   * Pencil is a colour, not transparency. Fading the row instead put this
+   * text at under 2:1 against the paper; this grey-blue is the lightest
+   * that still clears 4.5:1, so a part that is not built yet is quieter
+   * but never hard to read.
+   */
+  color: var(--pencil);
+  transition: color 450ms ease;
 }
 
 .anatomy__row[data-on] {
+  color: var(--color-ink);
+}
+
+/* The secondary lines are softened by opacity once inked; in pencil they
+   are already as light as they can go. */
+.anatomy__row:not([data-on]) :is(.anatomy__name, .anatomy__line) {
   opacity: 1;
 }
 
@@ -592,15 +995,17 @@ a {
   place-items: center;
   width: 1.75rem;
   height: 1.75rem;
-  border: 1.5px solid var(--color-ink);
+  border: 1.5px solid currentColor;
   border-radius: 50%;
-  color: var(--color-ink);
+  color: inherit;
   font-family: var(--font-sans);
   font-size: 0.8rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  transition: background-color 350ms ease;
+  transition:
+    background-color 350ms ease,
+    color 450ms ease;
 }
 
 .anatomy__row[data-on] .badge,
@@ -629,6 +1034,13 @@ a {
   font-size: 0.95rem;
   line-height: 1.35;
   opacity: 0.85;
+}
+
+/* The chapter's last word has the shortest stretch of scroll to be read in,
+   so it arrives at once rather than easing in like the rest. */
+.panel[data-on] .closing.fade[data-on] {
+  animation-duration: 320ms;
+  animation-delay: 0ms;
 }
 
 .closing {
@@ -708,6 +1120,44 @@ a {
   background-position: -3.8em 100%;
 }
 
+/*
+ * The answer: write, or book a call. Two equal choices, each a key line,
+ * a display-size link with the running-wake underline, and a small note.
+ * Side by side where there is room for both at full size, else stacked.
+ */
+.answer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(0.9rem, 2.4vh, 1.5rem);
+  width: 100%;
+}
+
+.answer__way {
+  display: grid;
+  justify-items: start;
+  gap: 0.35rem;
+}
+
+.answer .email {
+  font-size: clamp(1.1rem, 0.5rem + 2.2vw, 2.2rem);
+}
+
+.answer__more {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.5rem;
+}
+
+.answer__more svg {
+  width: 0.85em;
+  height: 0.85em;
+}
+
+.answer__more .textlink {
+  padding: 0.2rem 0;
+}
+
 .reach {
   display: flex;
   flex-wrap: wrap;
@@ -745,6 +1195,14 @@ a {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* Where to go after the crossing: the work, and the résumé. */
+.onward {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 1.5rem;
 }
 
 .foot {
@@ -793,9 +1251,112 @@ a {
 
 :root[data-tone="night"] :is(.site-header, .rail) {
   color: var(--color-paper);
+  --rail-ring: var(--color-ink);
+}
+
+/* Page links: inline on a wide screen, folded into a menu on a narrow one. */
+.site-nav {
+  display: flex;
+  gap: clamp(0.9rem, 1.7vw, 1.7rem);
+  margin-left: auto;
+  margin-right: clamp(0.25rem, 1.6vw, 1.5rem);
+}
+
+.site-nav a,
+.site-menu nav a {
+  position: relative;
+  padding: 0.55rem 0;
+}
+
+.site-nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.25rem;
+  height: 1.5px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 220ms var(--ease-out);
+}
+
+.site-nav a:is(:hover, [aria-current="page"])::after {
+  transform: scaleX(1);
+}
+
+.site-menu {
+  display: none;
+  position: relative;
+  margin-left: auto;
+}
+
+.site-menu summary {
+  padding: 0.65rem 0.35rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.site-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+/* A sheet of paper dropped under the word "Menu". */
+.site-menu nav {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  display: grid;
+  min-width: 12rem;
+  /* On a phone held sideways the list is taller than the screen: it scrolls. */
+  max-height: calc(100svh - var(--header-h) - 0.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.35rem 1rem 0.5rem;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: 0 0.75rem 2rem rgb(11 42 63 / 0.28);
+}
+
+/* Each row is a full-size tap target. */
+.site-menu nav a {
+  padding: 0.88rem 0;
+}
+
+.site-menu nav a[aria-current="page"] {
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+
+.site-menu__signal {
+  display: none;
+  margin-top: 0.3rem;
+  border-top: 1.5px solid rgb(11 42 63 / 0.25);
+}
+
+@media (max-width: 76rem) {
+  .site-nav {
+    display: none;
+  }
+
+  .site-menu {
+    display: block;
+  }
+}
+
+/* The narrowest phones have no room for the flag: it moves into the menu. */
+@media (max-width: 27rem) {
+  .site-header > .flag {
+    display: none;
+  }
+
+  .site-menu__signal {
+    display: block;
+  }
 }
 
 .brand {
+  margin-right: auto;
   display: inline-flex;
   padding: 0.35rem 0;
   font-size: clamp(1.05rem, 0.95rem + 0.4vw, 1.3rem);
@@ -891,6 +1452,9 @@ a {
   border-radius: 50%;
   background: currentColor;
   transition: scale 250ms var(--ease-out);
+  /* A ring in the opposite tone: the rail sits over moving water and sky,
+     and a single-colour dot disappears against half of it. */
+  box-shadow: 0 0 0 1.5px var(--rail-ring, var(--color-paper));
 }
 
 .rail__port[aria-current]::before {
@@ -934,13 +1498,26 @@ a {
 
 /* 9. Intro -----------------------------------------------------------------
 
-   The mark draws itself sitting on a horizon line. The line runs out to the
-   edges of the screen, the page opens along it, and the mark sails up to
-   its place in the header. States (data-intro on <html>):
-     play   the mark is drawing
-     lift   the page is opening
+   The page is a sheet of the ruled notebook paper the boats are folded
+   from, with a paper boat's folding diagram printed on it. It folds:
+     1  the top half folds back, and the sky is behind it;
+     2  the top corners fold back along the sail's edges;
+     3  the lower corners fold back along the hull's;
+   and what is left is a paper boat, which sails down onto the water and
+   becomes the boat floating there. States (data-intro on <html>):
+     play   the name is written, the diagram inks in, fold 1
+     lift   folds 2 and 3, and the boat goes to the water
      done   gone
-   Any input skips straight to lift. See components/intro/intro.tsx.
+   Any input skips straight to lift. The lift is animated by the inline
+   script in lib/intro.ts; this file holds the geometry and the play.
+   See components/intro/intro.tsx.
+
+   GEOMETRY
+   The boat is a paper boat seen from the side, the same proportions as the
+   3D one: its length L fills the screen's width or the lower half of its
+   height, whichever is less, and its sail's tip sits on the screen's
+   centre line. All in vw and vh, so every piece agrees with every other
+   and with the script, which reads the same numbers.
    ------------------------------------------------------------------------- */
 
 .intro {
@@ -948,10 +1525,18 @@ a {
   inset: 0;
   z-index: 100;
   display: none;
+  overflow: hidden;
   color: var(--color-ink);
-  --split: 60svh;
-  --mark: clamp(6.5rem, 22vmin, 12rem);
-  --part: 760ms;
+  --L: min(92vw, 109vh);
+  /* Half the sail's foot, half the hull at the rim, half the keel. */
+  --s: calc(var(--L) * 0.139);
+  --R: calc(var(--L) * 0.5);
+  --K: calc(var(--L) * 0.306);
+  /* Sail tip to rim, and rim to keel. */
+  --sail: calc(var(--L) * 0.256);
+  --hull: calc(var(--L) * 0.2);
+  --rule: 2rem;
+  --margin: max(2.6rem, 8.5vw);
 }
 
 :root[data-intro="play"] .intro,
@@ -959,58 +1544,216 @@ a {
   display: block;
 }
 
-.intro__half {
+/*
+ * The paper: the boats' own (components/world/sea/actors.ts), off-white
+ * with blue rules and a red margin, and a little fibre. Every piece paints
+ * the whole sheet, shifted by its own position, so the rules run straight
+ * across the cuts until the pieces move.
+ */
+.intro__paper {
   position: absolute;
-  left: 0;
-  right: 0;
-  background: var(--color-paper);
+  left: var(--x, 0px);
+  top: var(--y, 0px);
+  background-color: #f3f0e8;
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent var(--margin),
+      rgb(196 82 76 / 0.55) var(--margin),
+      rgb(196 82 76 / 0.55) calc(var(--margin) + 1.5px),
+      transparent calc(var(--margin) + 1.5px)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 calc(var(--rule) - 1.5px),
+      rgb(96 128 178 / 0.4) calc(var(--rule) - 1.5px) var(--rule)
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .3 0 0 0 0 .26 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:
+    100vw 100vh,
+    100vw 100vh,
+    180px 180px;
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-position: calc(-1 * var(--x, 0px)) calc(-1 * var(--y, 0px));
+  backface-visibility: hidden;
 }
 
-.intro__half--sky {
-  top: 0;
-  height: calc(var(--split) + 1px);
-}
-
-.intro__half--sea {
-  top: var(--split);
-  bottom: 0;
-}
-
-.intro__line {
+.intro__fold {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(var(--split) - 1px);
-  height: 2px;
-  background: var(--color-ink);
-  transform: scaleX(0);
+  inset: 0;
+  perspective: 1500px;
 }
 
-/* The mark stands so that its wave lies on the horizon. */
-.intro__mark {
+/* The sheet below the centre line, under the seams, until the folding starts. */
+.intro__under {
+  --y: calc(50vh - 1px);
+  width: 100vw;
+  height: calc(50vh + 1px);
+}
+
+.intro__boat {
   position: absolute;
-  left: calc(50% - var(--mark) / 2);
-  top: calc(var(--split) - var(--mark) * 0.86);
-  width: var(--mark);
-  height: var(--mark);
+  inset: 0;
+  perspective: 1500px;
+  transform-origin: 50vw 50vh;
+}
+
+/* The pieces, as cut along the diagram. Each knows its own box. */
+.intro__piece--sail {
+  --x: calc(50vw - var(--s));
+  --y: 50vh;
+  width: calc(var(--s) * 2);
+  height: var(--sail);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.intro__piece--hull {
+  --x: calc(50vw - var(--R));
+  --y: calc(50vh + var(--sail));
+  width: calc(var(--R) * 2);
+  height: var(--hull);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    calc(50% + var(--K)) 100%,
+    calc(50% - var(--K)) 100%
+  );
+}
+
+.intro__piece--tl {
+  --y: 50vh;
+  width: 50vw;
+  height: var(--sail);
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--s)) 100%, 0 100%);
+  transform-origin: 100% 0;
+}
+
+.intro__piece--tr {
+  --x: 50vw;
+  --y: 50vh;
+  width: 50vw;
+  height: var(--sail);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, var(--s) 100%);
   transform-origin: 0 0;
 }
 
+.intro__piece--bl {
+  --y: calc(50vh + var(--sail));
+  width: calc(50vw - var(--K));
+  height: var(--hull);
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--R) + var(--K)) 0,
+    100% 100%,
+    0 100%
+  );
+  transform-origin: calc(100% - var(--R) + var(--K)) 0;
+}
+
+.intro__piece--br {
+  --x: calc(50vw + var(--K));
+  --y: calc(50vh + var(--sail));
+  width: calc(50vw - var(--K));
+  height: var(--hull);
+  clip-path: polygon(calc(var(--R) - var(--K)) 0, 100% 0, 100% 100%, 0 100%);
+  transform-origin: calc(var(--R) - var(--K)) 0;
+}
+
+.intro__piece--foot {
+  --y: calc(50vh + var(--sail) + var(--hull));
+  width: 100vw;
+  height: calc(50vh - var(--sail) - var(--hull) + 2px);
+  transform-origin: 50% 0;
+}
+
+/* Light falls off a piece as it turns away. */
+.intro__shade {
+  position: absolute;
+  inset: 0;
+  background: #0b2a3f;
+  opacity: 0;
+}
+
+/* The top half, with the first fold line (dashed) along its foot. */
+.intro__leaf {
+  width: 100vw;
+  height: 50vh;
+  transform-origin: 50% 100%;
+  border-bottom: 2px dashed rgb(11 42 63 / 0.45);
+}
+
+/* The diagram: dashed fold lines and numbered steps, in pencil. */
+.intro__creases {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.intro__creases line {
+  stroke: rgb(11 42 63 / 0.45);
+  stroke-width: 2;
+  stroke-dasharray: 9 7;
+  stroke-linecap: round;
+}
+
+.intro__creases line[data-crease="keel"] {
+  stroke-dasharray: 2 6 12 6;
+}
+
+.intro__creases circle,
+.intro__step {
+  fill: #f3f0e8;
+  stroke: rgb(11 42 63 / 0.55);
+  stroke-width: 1.5;
+}
+
+.intro__creases text {
+  fill: rgb(11 42 63 / 0.8);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 650;
+  text-anchor: middle;
+}
+
+.intro__step {
+  position: absolute;
+  left: calc(var(--margin) + 0.9rem);
+  bottom: 0.55rem;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid rgb(11 42 63 / 0.55);
+  border-radius: 50%;
+  font-size: 12px;
+  color: rgb(11 42 63 / 0.8);
+}
+
+/* The name, written on the sheet across the rules, past the margin. */
 .intro__words {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(var(--split) + var(--mark) * 0.3);
+  left: calc(var(--margin) + 0.9rem);
+  right: var(--gutter);
+  top: calc(var(--rule) * 3);
   display: grid;
-  justify-items: center;
-  gap: 0.45rem;
-  text-align: center;
+  justify-items: start;
+  gap: 0.5rem;
 }
 
 .intro__name {
-  font-size: clamp(1.7rem, 1rem + 2.6vw, 2.9rem);
+  font-size: clamp(2rem, 0.9rem + 5.4vw, 6.2rem);
   line-height: 1;
-  width: max-content;
+  /* One line where it fits; on the narrowest phones, two. */
+  width: fit-content;
+  max-width: 100%;
+  text-wrap: balance;
+}
+
+.intro__role {
+  font-size: clamp(0.95rem, 0.8rem + 0.5vw, 1.25rem);
 }
 
 .intro__skip {
@@ -1025,23 +1768,17 @@ a {
   opacity: 0.7;
 }
 
+/* A tab opened in the background waits, paused, until it is seen. */
+:root[data-intro-wait] .intro * {
+  animation-play-state: paused !important;
+}
+
 /* play
 
    Everything here animates transform or opacity on an HTML element, which
    the compositor can run without the main thread. That matters: the 3D
-   world is being built behind the overlay during exactly these moments.
+   world is being built behind the sheet during exactly these moments.
 */
-
-.intro__part {
-  position: absolute;
-  inset: 0;
-}
-
-.intro__part svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
 
 /*
  * A wipe from the left using only transforms: the outer box slides in
@@ -1059,40 +1796,42 @@ a {
   height: 100%;
 }
 
-.intro__part--wave {
-  animation: wipe-box 620ms var(--ease-out) 120ms both;
-}
-
-.intro__part--wave > span {
-  animation: wipe-content 620ms var(--ease-out) 120ms both;
-}
-
-/* Origins are the foot of the mast and the sail's flat edge, in the mark's box. */
-.intro__part--mast {
-  transform-origin: 35.5% 68.75%;
-  animation: intro-mast 460ms var(--ease-out) 420ms both;
-}
-
-.intro__part--sail {
-  transform-origin: 47.7% 32%;
-  animation: intro-sail 620ms var(--ease-swing) 720ms both;
-}
-
 .intro__name {
-  padding: 0.12em 0.08em 0.18em;
-  animation: wipe-box 640ms cubic-bezier(0.45, 0, 0.15, 1) 1000ms both;
+  padding: 0.12em 0.08em 0.2em;
+  animation: wipe-box 720ms cubic-bezier(0.45, 0, 0.15, 1) 120ms both;
 }
 
 .intro__name > span {
-  animation: wipe-content 640ms cubic-bezier(0.45, 0, 0.15, 1) 1000ms both;
+  animation: wipe-content 720ms cubic-bezier(0.45, 0, 0.15, 1) 120ms both;
 }
 
 .intro__role {
-  animation: fade 420ms ease 1300ms both;
+  animation: intro-skip 420ms ease 560ms both;
+}
+
+.intro__step {
+  animation: intro-skip 300ms ease 360ms both;
+}
+
+.intro__crease--2 {
+  animation: intro-skip 320ms ease 520ms both;
+}
+
+.intro__crease--3 {
+  animation: intro-skip 320ms ease 680ms both;
 }
 
 .intro__skip {
   animation: intro-skip 300ms ease 300ms both;
+}
+
+/* Fold 1: the top half goes back over the centre line, out of sight. */
+.intro__leaf {
+  animation: intro-fold 760ms cubic-bezier(0.5, 0, 0.75, 0.3) 1060ms both;
+}
+
+.intro__leaf .intro__shade {
+  animation: intro-shade 420ms ease-in 1060ms both;
 }
 
 @keyframes wipe-box {
@@ -1107,66 +1846,33 @@ a {
   }
 }
 
-@keyframes intro-mast {
-  from {
-    transform: scaleY(0);
-  }
-}
-
-@keyframes intro-sail {
-  from {
-    transform: scaleX(0);
-  }
-}
-
 @keyframes intro-skip {
   from {
     opacity: 0;
   }
 }
 
-/* lift */
+@keyframes intro-fold {
+  to {
+    transform: rotateX(180deg);
+  }
+}
+
+@keyframes intro-shade {
+  to {
+    opacity: 0.2;
+  }
+}
+
+/* lift (the folding itself is the script's) */
 
 :root[data-intro="lift"] .intro {
   pointer-events: none;
 }
 
-:root[data-intro="lift"] .intro__line {
-  transform: scaleX(1);
-  opacity: 0;
-  transition:
-    transform 360ms var(--ease-out),
-    opacity 300ms ease calc(var(--part) * 0.55);
-}
-
-:root[data-intro="lift"] .intro__half--sky {
-  transform: translateY(-101%);
-  transition: transform var(--part) var(--ease-in-out) 180ms;
-}
-
-:root[data-intro="lift"] .intro__half--sea {
-  transform: translateY(101%);
-  transition: transform var(--part) var(--ease-in-out) 180ms;
-}
-
-:root[data-intro="lift"] :is(.intro__words, .intro__skip) {
-  opacity: 0;
-  transition: opacity 180ms ease;
-  animation: none;
-}
-
-/* Skipped: the same hand-off, without the ceremony. */
-:root[data-intro-skip] .intro {
-  --part: 380ms;
-}
-
-:root[data-intro-skip][data-intro="lift"] .intro__line {
-  transition: none;
-  opacity: 0;
-}
-
-:root[data-intro-skip][data-intro="lift"] .intro__half {
-  transition-delay: 0ms;
+:root[data-intro="lift"] .intro__under,
+:root[data-intro="lift"] .intro__skip {
+  display: none;
 }
 
 /* While the intro is up, the page underneath waits for it. */
@@ -1179,25 +1885,20 @@ a {
   opacity: 0;
 }
 
-/* The header's own mark stays hidden until the intro's mark has landed on it. */
-:root[data-intro="lift"] .brand svg {
-  opacity: 0;
-}
-
 :root[data-intro="lift"] :is(.site-header, .rail) {
-  transition: opacity 500ms ease 250ms;
+  transition: opacity 500ms ease 450ms;
 }
 
-/* The hero waits a beat so it rises as the page opens, not behind the curtain. */
+/* The hero waits a beat so it rises as the boat lands, not behind the sheet. */
 :root[data-intro-played] {
-  --hold: 420ms;
+  --hold: 520ms;
 }
 
 /* Other shapes of screen ----------------------------------------------------
 
    Two layouts, chosen by the shape of the viewport rather than its width
    alone, because the 3D camera frames by shape too (see `narrow` in
-   components/world/engine/index.ts — the two must agree):
+   components/world/sea/index.ts — the two must agree):
 
      wide   text in a column on the left, the subject to the right
      tall   text across the top, the subject below it (phones, and any
@@ -1222,7 +1923,7 @@ a {
     left: 50%;
     top: auto;
     bottom: 0.6rem;
-    width: min(62vw, 17rem);
+    width: min(76vw, 17rem);
     height: 1.75rem;
     translate: -50% 0;
   }
@@ -1268,7 +1969,9 @@ a {
 
   .board {
     max-width: none;
-    grid-template-rows: auto auto 1fr auto;
+    /* key, title, sentence, then the space the model shows through (with
+       the closing line at its foot), then the current part. */
+    grid-template-rows: auto auto auto 1fr auto;
     height: 100%;
     gap: 0.6rem;
   }
@@ -1282,7 +1985,7 @@ a {
   }
 
   .anatomy {
-    grid-row: 4;
+    grid-row: 5;
     align-self: end;
     width: 100%;
   }
@@ -1300,7 +2003,7 @@ a {
   }
 
   .closing {
-    grid-row: 3;
+    grid-row: 4;
     align-self: end;
   }
 
@@ -1373,6 +2076,86 @@ a {
   .board .body {
     display: none;
   }
+
+  /* With that sentence gone its row is free: the closing line takes it,
+     clear of the numbers hanging under the model. */
+  .closing {
+    grid-row: 3;
+    align-self: start;
+  }
+}
+
+/*
+ * The last chapter on any screen without much height (a small phone, or
+ * one held sideways): its links have to fit above the rail. The two ways
+ * to answer keep their size; what goes is the small print. The booking
+ * link still says, to a screen reader, that it opens Calendly; the brand
+ * in the header already goes back to the harbour.
+ */
+@media (max-width: 40rem) and (max-height: 44rem),
+  (min-aspect-ratio: 11/10) and (max-height: 30rem) {
+  .signal {
+    gap: 0.5rem;
+  }
+
+  .answer {
+    gap: 0.55rem;
+  }
+
+  .answer__way {
+    gap: 0.1rem;
+  }
+
+  .answer__more[aria-hidden] {
+    display: none;
+  }
+
+  .answer__more .textlink,
+  .reach .textlink,
+  .onward .textlink {
+    padding: 0.3rem 0;
+  }
+
+  .reach,
+  .onward {
+    gap: 0.1rem 1.25rem;
+  }
+
+  .foot {
+    display: none;
+  }
+}
+
+/* The narrowest phones: everything in the header a size down, so the flag
+   is never cut off, and the contact lines each fit on one row. */
+@media (max-width: 23.4rem) {
+  .site-header {
+    gap: 0.5rem;
+  }
+
+  .brand {
+    font-size: 0.95rem;
+  }
+
+  .site-header .flag {
+    height: 2.3rem;
+    padding: 0 1.2rem 0 0.7rem;
+    font-size: 0.72rem;
+    font-stretch: 106%;
+  }
+
+  .email,
+  .answer .email {
+    font-size: 1.02rem;
+  }
+
+  .reach {
+    gap: 0.3rem 1rem;
+  }
+
+  .foot {
+    font-size: 0.8rem;
+  }
 }
 
 /* Short, wide screens: drop the second line of each part. */
@@ -1419,8 +2202,17 @@ a {
     font-size: 1.1rem;
   }
 
-  .email {
+  .email,
+  .answer .email {
     font-size: 1.15rem;
+  }
+
+  .answer {
+    gap: 0.45rem;
+  }
+
+  .answer__way {
+    gap: 0.1rem;
   }
 
   .flag {
@@ -1434,7 +2226,7 @@ a {
 
   .board {
     gap: 0.35rem;
-    max-width: min(22rem, 42vw);
+    max-width: min(20rem, 37vw);
   }
 
   .board .body {
@@ -1475,6 +2267,810 @@ a {
   }
 }
 
+/*
+ * No room for a stage: a plain document instead.
+ *
+ * Below about 280px of height (a desktop zoomed to 400%, a small phone on
+ * its side) five lines of type and a 3D scene cannot share the screen, and
+ * pinned panels would simply clip. So nothing is pinned: every chapter is
+ * laid out in order, on paper, and the page scrolls like any other.
+ * components/world/stage.tsx stops the world in this mode.
+ *
+ * The same rules are repeated for visitors without JavaScript in
+ * app/layout.tsx (NO_SCRIPT_CSS). Keep the two in step.
+ */
+@media (max-height: 17.5rem) {
+  .stage,
+  .rail,
+  .pins,
+  .boats,
+  .fold-control {
+    display: none;
+  }
+
+  .chapter,
+  .chapter:last-of-type {
+    height: auto;
+  }
+
+  .panel {
+    position: static;
+    height: auto;
+    padding: 1.5rem var(--gutter);
+    color: var(--color-ink);
+    pointer-events: auto;
+  }
+
+  .panel--harbour {
+    padding-top: calc(var(--header-h) + 0.5rem);
+  }
+
+  .copy,
+  .harbour,
+  .signal,
+  .board {
+    max-width: none;
+  }
+
+  .fade,
+  .rise > span,
+  .unfold,
+  .tip,
+  .letter,
+  .sweep,
+  .glide {
+    opacity: 1 !important;
+    animation: none !important;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .board {
+    height: auto;
+    grid-template-rows: none;
+  }
+
+  .anatomy,
+  .closing {
+    grid-row: auto;
+  }
+
+  .anatomy__row,
+  .anatomy__row[data-on] {
+    grid-area: auto;
+    opacity: 1;
+    color: var(--color-ink);
+  }
+
+  .anatomy__line,
+  .board .body {
+    display: block;
+  }
+
+  .site-header {
+    position: absolute;
+    color: var(--color-ink);
+  }
+
+  .site-header .flag {
+    --flag-bg: var(--color-ink);
+    --flag-fg: var(--color-paper);
+  }
+}
+
+/* The other pages ------------------------------------------------------------
+
+   Skills, Experience, Achievements and Education. Each is an ordinary
+   scrolling page over its own fixed view of the same sea. The text sits in
+   a bank of mist drawn across the view, not on a card, and each page lays
+   its content out on its own idea: rigging, a log, lights, plans.
+   ------------------------------------------------------------------------- */
+
+.page {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  /* One column, and it may not grow wider than the screen to fit a long line. */
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: clamp(1.5rem, 4vh, 3rem);
+  min-height: 100svh;
+  padding: calc(var(--header-h) + clamp(1rem, 6vh, 4rem)) var(--gutter)
+    clamp(3rem, 10vh, 6rem);
+  color: var(--fg);
+}
+
+.page[data-tone="day"] {
+  --fg: var(--color-ink);
+  --mist: 251 243 228;
+}
+
+.page[data-tone="night"] {
+  --fg: var(--color-paper);
+  --mist: 7 27 47;
+}
+
+/*
+ * How far across the view the mist reaches. It has to cover whatever the
+ * page sets in it, so the two pages with the widest layouts get more.
+ */
+.page {
+  --mist-body: 0.8;
+  --mist-hold: 34%;
+  --mist-thin: 58%;
+  --mist-end: 80%;
+}
+
+.page--skills,
+.page--experience {
+  --mist-body: 0.88;
+  --mist-hold: 56%;
+  --mist-thin: 72%;
+  --mist-end: 92%;
+}
+
+.page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    98deg,
+    rgb(var(--mist) / 0.92) 0%,
+    rgb(var(--mist) / var(--mist-body)) var(--mist-hold),
+    rgb(var(--mist) / 0.38) var(--mist-thin),
+    rgb(var(--mist) / 0) var(--mist-end)
+  );
+}
+
+/*
+ * The header has no bar behind it, so text scrolling up the page would
+ * run through it. Instead the mist closes over the top: text dissolves
+ * into it before it reaches the header.
+ */
+.page::after {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 2;
+  height: calc(var(--header-h) + 2rem);
+  pointer-events: none;
+  background: linear-gradient(
+    98deg,
+    rgb(var(--mist)) 0%,
+    rgb(var(--mist)) calc(var(--mist-end) - 30%),
+    rgb(var(--mist) / 0) var(--mist-end)
+  );
+  -webkit-mask-image: linear-gradient(to bottom, #000 50%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 50%, transparent 100%);
+}
+
+.page__head {
+  display: grid;
+  justify-items: start;
+  gap: clamp(0.7rem, 1.8vh, 1.2rem);
+  max-width: 38rem;
+}
+
+.waiting {
+  max-width: 34rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--color-vermilion);
+  line-height: 1.5;
+}
+
+/* Skills: masts, and the lines made fast to them. */
+
+.rig {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: clamp(1.75rem, 3vw, 2.75rem);
+  max-width: 54rem;
+}
+
+.rig__mast {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 0.9rem;
+  padding-left: 1.5rem;
+}
+
+.rig__mast::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.15rem;
+  bottom: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.rig__name {
+  font-size: 1.5rem;
+}
+
+.rig__lines {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rig__line {
+  position: relative;
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.55rem 0 0.55rem 1.1rem;
+}
+
+/* The rope: from the mast, down a little, to the skill. */
+.rig__line::before {
+  content: "";
+  position: absolute;
+  left: -1.5rem;
+  top: 0.75rem;
+  width: 2.35rem;
+  height: 1.5px;
+  background: currentColor;
+  transform-origin: left;
+  rotate: 11deg;
+}
+
+.rig__skill {
+  font-size: 1.1rem;
+  font-weight: 520;
+  line-height: 1.25;
+}
+
+.rig__line[data-strong] .rig__skill {
+  font-weight: 720;
+}
+
+.rig__line[data-strong]::before {
+  height: 2.5px;
+}
+
+.rig__evidence {
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.rig__line--bare {
+  height: 2.3rem;
+}
+
+.rig__line--bare::after {
+  content: "";
+  position: absolute;
+  left: 1.1rem;
+  right: 22%;
+  top: 1.15rem;
+  height: 1.5px;
+  background: currentColor;
+  opacity: 0.28;
+}
+
+/* Experience: a ruled log. */
+
+.log {
+  max-width: 54rem;
+  border-top: 2px solid currentColor;
+}
+
+.log__row {
+  display: grid;
+  grid-template-columns: 7.5rem 11rem minmax(14rem, 1fr);
+  gap: 0 clamp(1rem, 2.2vw, 2rem);
+  align-items: start;
+  padding: 1rem 0;
+  border-bottom: 1.5px solid rgb(from currentColor r g b / 0.35);
+}
+
+.log__row--head {
+  padding: 0.55rem 0;
+  border-bottom-color: currentColor;
+}
+
+.log__position {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.log__position strong {
+  font-size: 1.25rem;
+}
+
+.log__place {
+  font-size: 0.9rem;
+}
+
+.log__remarks {
+  display: grid;
+  gap: 0.45rem;
+  line-height: 1.45;
+}
+
+/* What the company does: the heading of the entry's remarks. */
+.log__context {
+  font-weight: 640;
+}
+
+.log__row--bare {
+  height: 3.6rem;
+}
+
+/* Achievements: lamps. */
+
+.lights {
+  display: grid;
+  gap: clamp(1.2rem, 3vh, 2rem);
+  max-width: 40rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.light {
+  position: relative;
+  display: grid;
+  gap: 0.25rem;
+  padding-left: 2.5rem;
+}
+
+.light::before {
+  content: "";
+  position: absolute;
+  left: 0.35rem;
+  top: 0.45rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--color-sun);
+  box-shadow:
+    0 0 0 0.3rem rgb(255 197 61 / 0.18),
+    0 0 1.4rem 0.3rem rgb(255 197 61 / 0.5);
+  /* Each lamp keeps its own slow rhythm, like lights along a coast. */
+  animation: lamp 5.5s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -1.37s);
+}
+
+.light--out {
+  height: 2.6rem;
+}
+
+.light--out::before {
+  border: 1.5px solid currentColor;
+  background: none;
+  box-shadow: none;
+  animation: none;
+  opacity: 0.5;
+}
+
+.light--out::after {
+  content: "";
+  position: absolute;
+  left: 2.5rem;
+  right: 30%;
+  top: 0.85rem;
+  height: 1.5px;
+  background: currentColor;
+  opacity: 0.25;
+}
+
+.light__name {
+  font-size: 1.45rem;
+}
+
+.light__why {
+  max-width: 34rem;
+  line-height: 1.45;
+}
+
+@keyframes lamp {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Education: drawing title blocks. */
+
+.plans {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 46rem;
+}
+
+.plan {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+  border-top: 1.5px solid currentColor;
+  border-left: 1.5px solid currentColor;
+}
+
+.plan__cell {
+  display: grid;
+  align-content: start;
+  gap: 0.3rem;
+  min-height: 4.25rem;
+  padding: 0.7rem 0.9rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+}
+
+.plan__cell--wide {
+  grid-column: 1 / -1;
+}
+
+.plan dd {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+.plan dd.display {
+  font-size: 1.5rem;
+}
+
+/* Projects: a fleet register. One ruled entry per vessel, numbered. */
+
+.fleet {
+  max-width: 54rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 2px solid currentColor;
+}
+
+.vessel {
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, 1fr);
+  gap: 0 clamp(0.75rem, 2vw, 1.75rem);
+  padding: clamp(1.25rem, 3.4vh, 2.1rem) 0;
+  border-bottom: 1.5px solid rgb(from currentColor r g b / 0.35);
+}
+
+.vessel__no {
+  padding-top: 0.7rem;
+}
+
+.vessel__body {
+  display: grid;
+  justify-items: start;
+  gap: 0.65rem;
+}
+
+.vessel__name {
+  font-size: clamp(2.1rem, 1.3rem + 2.7vw, 3.6rem);
+}
+
+/* The pennant says whether she is in service or open to visitors. */
+.vessel__class[data-status="Live to try"]::before {
+  background: var(--color-sun);
+}
+
+.vessel__points {
+  display: grid;
+  gap: 0.4rem;
+  max-width: 33rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  line-height: 1.45;
+}
+
+.vessel__points li {
+  position: relative;
+  padding-left: 1.2rem;
+}
+
+.vessel__points li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.7em;
+  width: 0.6rem;
+  height: 1.5px;
+  background: currentColor;
+}
+
+.vessel__stack {
+  font-weight: 520;
+  line-height: 1.5;
+}
+
+.vessel__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+}
+
+/* The smaller craft: a series of open builds, by name. */
+.series {
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+  max-width: 42rem;
+  margin-top: clamp(0.5rem, 3vh, 2rem);
+}
+
+.series__title {
+  font-size: clamp(1.9rem, 1.2rem + 2vw, 2.9rem);
+}
+
+.series__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.1rem clamp(1.5rem, 3vw, 2.75rem);
+  width: 100%;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.series__list li {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  font-size: 0.95rem;
+  line-height: 1.42;
+}
+
+.series__list a {
+  padding: 0.25rem 0;
+  font-size: 1.22rem;
+  letter-spacing: -0.012em;
+  line-height: 1.15;
+}
+
+/* The résumé: a sheet of paper laid over the sea. ----------------------------
+
+   On screen it is paper-coloured and sits in the middle of the view. The
+   print rules at the end of this file turn the same markup into one A4
+   page: that is what the PDF in public/ is made from.
+   ------------------------------------------------------------------------- */
+
+.resume {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: minmax(0, 52rem);
+  justify-content: center;
+  padding: calc(var(--header-h) + 0.5rem) var(--gutter) clamp(3rem, 10vh, 6rem);
+  color: var(--color-ink);
+}
+
+/* A document scrolls, and the header goes with it rather than over it. */
+:root:has(.resume) .site-header {
+  position: absolute;
+}
+
+/* A strip above the sheet, torn off along the dashes when it is printed. */
+.resume__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.25rem;
+  padding: 0.85rem clamp(1.25rem, 5vw, 3.25rem);
+  background: var(--color-paper);
+  border-bottom: 1.5px dashed rgb(11 42 63 / 0.4);
+}
+
+.sheet {
+  padding: clamp(1.5rem, 5vw, 3.25rem);
+  padding-top: clamp(1.5rem, 4vw, 2.5rem);
+  background: var(--color-paper);
+  box-shadow: 0 1.75rem 4rem rgb(11 42 63 / 0.38);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.sheet__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(0.9rem, 2.5vw, 1.4rem);
+  padding-bottom: 1.1rem;
+  border-bottom: 2px solid currentColor;
+}
+
+.sheet__mark {
+  width: clamp(3rem, 8vw, 4.25rem);
+  height: auto;
+}
+
+.sheet__name {
+  font-size: clamp(2rem, 1.3rem + 3vw, 3.1rem);
+}
+
+.sheet__role {
+  margin-top: 0.4rem;
+  font-weight: 640;
+  line-height: 1.3;
+}
+
+.sheet__contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.1rem;
+  margin-top: 0.35rem;
+  font-size: 0.86rem;
+}
+
+.sheet a {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  overflow-wrap: anywhere;
+}
+
+.sheet section {
+  margin-top: 1.35rem;
+}
+
+/* Section names: the pennant, the word, and a rule out to the edge. */
+.sheet__heading {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.5rem;
+  font-stretch: 118%;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.012em;
+}
+
+.sheet__heading::before {
+  content: "";
+  flex: none;
+  width: 0.7rem;
+  height: 0.55rem;
+  background: var(--color-vermilion);
+  clip-path: polygon(0 0, 100% 0, 62% 50%, 100% 100%, 0 100%);
+}
+
+.sheet__heading::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgb(11 42 63 / 0.3);
+}
+
+.sheet__entry + .sheet__entry {
+  margin-top: 0.85rem;
+}
+
+.sheet__line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0 1rem;
+}
+
+.sheet strong {
+  font-weight: 700;
+}
+
+.sheet__line span {
+  font-size: 0.86rem;
+  font-weight: 560;
+}
+
+.sheet__context {
+  color: var(--pencil);
+}
+
+.sheet ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.05rem;
+  list-style: disc;
+}
+
+.sheet li::marker {
+  color: var(--color-vermilion);
+}
+
+.sheet li + li {
+  margin-top: 0.15rem;
+}
+
+.sheet__skills + .sheet__skills {
+  margin-top: 0.25rem;
+}
+
+/* A project in one line: what it is, and where to try it. */
+.sheet__project + .sheet__project {
+  margin-top: 0.2rem;
+}
+
+.sheet__project span:first-child {
+  flex: 1 1 24rem;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.sheet__series {
+  margin-top: 0.4rem;
+}
+
+.sheet__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 clamp(1.25rem, 4vw, 2.5rem);
+}
+
+.sheet__pair p + p {
+  margin-top: 0.45rem;
+}
+
+.sheet__foot {
+  margin-top: 1.6rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgb(11 42 63 / 0.3);
+  font-size: 1.05rem;
+  font-style: italic;
+  font-weight: 520;
+  line-height: 1.2;
+  text-align: right;
+}
+
+@media (max-width: 40rem) {
+  .resume {
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+  }
+
+  .sheet__pair {
+    grid-template-columns: 1fr;
+  }
+
+  .sheet__pair > div + div {
+    margin-top: 1.35rem;
+  }
+
+  .vessel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vessel__no {
+    padding: 0 0 0.35rem;
+  }
+}
+
+@media (max-width: 40rem), (max-aspect-ratio: 11/10) {
+  /* On a tall screen the mist comes down from the top instead. */
+  .page::before {
+    background: linear-gradient(
+      to bottom,
+      rgb(var(--mist) / 0.92) 0%,
+      rgb(var(--mist) / 0.82) 55%,
+      rgb(var(--mist) / 0.5) 100%
+    );
+  }
+
+  .page::after {
+    background: rgb(var(--mist));
+  }
+
+  .log__row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .log__row--head {
+    display: none;
+  }
+
+  .plan {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* 10. Reduced motion, no-script, 404 --------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1483,6 +3079,7 @@ a {
    * opacity itself, so removing the animation cannot leave text hidden.)
    */
   .panel *,
+  .page *,
   .intro *,
   .rail * {
     animation: none !important;
@@ -1527,4 +3124,127 @@ a {
 .lost__mark {
   width: 4.5rem;
   height: 4.5rem;
+}
+
+/* 11. Print ----------------------------------------------------------------
+
+   Only the résumé is meant for paper. Printed, the sheet is the page: no
+   sea, no header, black-on-white sizes in points, and everything on one
+   side of A4. If the résumé grows, check it still fits (the README says
+   how the PDF is made) before reaching for a smaller size.
+   ------------------------------------------------------------------------- */
+
+@page {
+  size: A4;
+  margin: 9mm 12mm 8mm;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff;
+  }
+
+  .stage,
+  .site-header,
+  .rail,
+  .intro,
+  .skip,
+  .resume__actions {
+    display: none !important;
+  }
+
+  .resume {
+    display: block;
+    padding: 0;
+  }
+
+  .sheet {
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    font-size: 8.6pt;
+    line-height: 1.33;
+    /* Keep the vermilion pennants: they are backgrounds, which print drops. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .sheet__head {
+    gap: 12pt;
+    padding-bottom: 8pt;
+    border-bottom-width: 1.25pt;
+  }
+
+  .sheet__mark {
+    width: 36pt;
+  }
+
+  .sheet__name {
+    font-size: 25pt;
+  }
+
+  .sheet__role {
+    margin-top: 3pt;
+    font-size: 9.6pt;
+  }
+
+  .sheet__contact {
+    margin-top: 2pt;
+    font-size: 8.4pt;
+  }
+
+  .sheet a {
+    text-decoration: none;
+  }
+
+  .sheet section {
+    margin-top: 7.5pt;
+  }
+
+  .sheet__heading {
+    margin-bottom: 3pt;
+    font-size: 7.8pt;
+  }
+
+  .sheet__entry + .sheet__entry {
+    margin-top: 5.5pt;
+  }
+
+  .sheet__line span {
+    font-size: 8.4pt;
+  }
+
+  .sheet ul {
+    margin-top: 1.5pt;
+    padding-left: 10pt;
+  }
+
+  .sheet li + li {
+    margin-top: 0.6pt;
+  }
+
+  .sheet__skills + .sheet__skills,
+  .sheet__pair p + p {
+    margin-top: 2pt;
+  }
+
+  .sheet__pair {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sheet__pair > div + div {
+    margin-top: 0;
+  }
+
+  /* The tagline is for the screen: on paper the space goes to the work. */
+  .sheet__foot {
+    display: none;
+  }
+
+  .sheet section,
+  .sheet__entry,
+  .sheet li {
+    break-inside: avoid;
+  }
 }

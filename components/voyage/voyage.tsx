@@ -9,6 +9,7 @@ import {
   type ChapterId,
 } from "@/lib/site";
 import { AnatomyPins } from "./anatomy-pins";
+import { BoatTags } from "./boat-tags";
 import { CopyEmail } from "./copy-email";
 import { FoldControl } from "./fold-control";
 
@@ -93,10 +94,19 @@ function Harbour() {
   return (
     <Chapter id="harbour">
       <div className="harbour">
-        {/* The page's h1 is the identity; the statement below is the voice. */}
-        <h1 id="harbour-title" className="label fade" style={at(0)}>
-          <span className="sr-only">{IDENTITY.name}, </span>
-          {IDENTITY.role}
+        {/*
+         * Who this is and what he does, first and in plain words. It is
+         * the page's h1; the statement under it is the voice.
+         */}
+        <h1
+          id="harbour-title"
+          tabIndex={-1}
+          className="identity fade"
+          style={at(0)}
+        >
+          <span className="identity__name">{IDENTITY.name}</span>
+          <span className="sr-only">, </span>
+          <span className="identity__role label">{IDENTITY.role}</span>
         </h1>
         <p className="display harbour__line">
           <span className="rise" style={at(0)}>
@@ -112,6 +122,9 @@ function Harbour() {
         </p>
         <p className="body fade" style={at(5)}>
           {COPY.harbour.body}
+        </p>
+        <p className="key label fade" style={at(6)}>
+          {COPY.harbour.key}
         </p>
         <a
           className="cue label fade"
@@ -131,7 +144,10 @@ function Paper() {
   return (
     <Chapter id="paper">
       <div className="copy">
-        <h2 id="paper-title" className="display title">
+        <p className="key label fade" style={at(0)}>
+          {COPY.paper.key}
+        </p>
+        <h2 id="paper-title" tabIndex={-1} className="display title">
           <span className="unfold" style={at(0)}>
             Anyone can{" "}
           </span>
@@ -145,8 +161,13 @@ function Paper() {
         <p className="display aside tip" data-from="1.42">
           {COPY.paper.body[1]}
         </p>
-        <FoldControl label={COPY.paper.fold} hint={COPY.paper.hint} />
+        <FoldControl
+          label={COPY.paper.fold}
+          hint={COPY.paper.hint}
+          again={COPY.paper.again}
+        />
       </div>
+      <BoatTags />
     </Chapter>
   );
 }
@@ -155,7 +176,10 @@ function Board() {
   return (
     <Chapter id="board">
       <div className="board">
-        <h2 id="board-title" className="display title letter">
+        <p className="key label fade" style={at(0)}>
+          {COPY.board.key}
+        </p>
+        <h2 id="board-title" tabIndex={-1} className="display title letter">
           {COPY.board.title}
         </h2>
         <p className="body fade" style={at(6)}>
@@ -182,7 +206,7 @@ function Board() {
             </li>
           ))}
         </ol>
-        <p className="display closing fade" data-from="2.895">
+        <p className="display closing fade" data-from="2.8">
           {COPY.board.closing}
         </p>
       </div>
@@ -195,7 +219,10 @@ function Weather() {
   return (
     <Chapter id="weather">
       <div className="copy">
-        <h2 id="weather-title" className="display title sweep">
+        <p className="key label fade" style={at(0)}>
+          {COPY.weather.key}
+        </p>
+        <h2 id="weather-title" tabIndex={-1} className="display title sweep">
           {COPY.weather.title}
         </h2>
         <p className="body sweep" style={at(1)}>
@@ -236,23 +263,51 @@ function OpenWater() {
   return (
     <Chapter id="open-water">
       <div className="signal">
-        <h2 id="open-water-title" className="display title glide" style={at(0)}>
+        <p className="key label glide" style={at(0)}>
+          {COPY["open-water"].key}
+        </p>
+        <h2
+          id="open-water-title"
+          tabIndex={-1}
+          className="display title glide"
+          style={at(0)}
+        >
           {COPY["open-water"].title}
         </h2>
         <p className="body glide" style={at(1)}>
           {COPY["open-water"].body}
         </p>
         <Logbook />
-        <a
-          className="display email glide"
-          href={`mailto:${IDENTITY.email}`}
-          style={at(3)}
-        >
-          {user}
-          <wbr />@{domain}
-        </a>
+        {/* Two ways to answer, given equal weight: write, or book a time. */}
+        <div className="answer glide" style={at(3)}>
+          <div className="answer__way">
+            <p className="key label">{COPY["open-water"].write}</p>
+            <a className="display email" href={`mailto:${IDENTITY.email}`}>
+              {user}
+              <wbr />@{domain}
+            </a>
+            <p className="answer__more label">
+              <CopyEmail email={IDENTITY.email} />
+            </p>
+          </div>
+          <div className="answer__way">
+            <p className="key label">{COPY["open-water"].book}</p>
+            <a
+              className="display email"
+              href={IDENTITY.booking}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {COPY["open-water"].bookLine}
+              <span className="sr-only"> (opens Calendly in a new tab)</span>
+            </a>
+            <p className="answer__more label" aria-hidden="true">
+              {COPY["open-water"].bookNote}
+              <ArrowOut />
+            </p>
+          </div>
+        </div>
         <div className="reach label glide" style={at(4)}>
-          <CopyEmail email={IDENTITY.email} />
           {IDENTITY.links.map((link) => (
             <a
               key={link.href}
@@ -267,7 +322,15 @@ function OpenWater() {
             </a>
           ))}
         </div>
-        <footer className="foot glide" style={at(5)}>
+        <p className="onward label glide" style={at(5)}>
+          <a className="textlink" href="/projects">
+            See what I have built
+          </a>
+          <a className="textlink" href="/resume">
+            Résumé
+          </a>
+        </p>
+        <footer className="foot glide" style={at(6)}>
           <span>
             © {new Date().getFullYear()} {IDENTITY.name}
           </span>

@@ -1,4 +1,4 @@
-import type { World, WorldReadout } from "@/components/world/engine";
+import type { World, WorldReadout } from "@/components/world/sea";
 
 /**
  * The one shared piece of client state: where the reader is in the
@@ -28,6 +28,7 @@ const foldListeners = new Set<FoldListener>();
 let coordinate = 0;
 let world: World | null = null;
 let folds = 0;
+let quietUntil = 0;
 let travel: ((target: number, instant?: boolean) => void) | null = null;
 
 export const voyage = {
@@ -35,11 +36,15 @@ export const voyage = {
     return coordinate;
   },
 
-  /** Called by the scroll driver. */
-  setChapter(value: number): void {
-    if (value === coordinate) return;
+  /**
+   * Called by the scroll driver on the home page, and by the other pages
+   * to put the world's camera where they want it. `immediate` cuts there
+   * instead of travelling: right for a change of page, wrong for a scroll.
+   */
+  setChapter(value: number, immediate = false): void {
+    if (value === coordinate && !immediate) return;
     coordinate = value;
-    world?.setChapter(value);
+    world?.setChapter(value, immediate);
     for (const listener of chapterListeners) listener(value);
   },
 
@@ -72,10 +77,25 @@ export const voyage = {
 
   /** Folds a paper boat where the pointer met the water. */
   fold(clientX: number, clientY: number): boolean {
+    // A click that closed a boat's tag was not a click on the water.
+    if (performance.now() < quietUntil) return false;
     if (!world || !world.tap(clientX, clientY)) return false;
     folds += 1;
     for (const listener of foldListeners) listener(folds);
     return true;
+  },
+
+  /** For the next moment, clicks do not fold boats. */
+  hush(milliseconds = 400): void {
+    quietUntil = performance.now() + milliseconds;
+  },
+
+  /**
+   * Leans on a paper boat (`slot` in the world's fleet) with one of the
+   * six pressures (the order of PRESSURES in lib/site.ts). It goes down.
+   */
+  lean(slot: number, kind: number): boolean {
+    return world ? world.lean(slot, kind) : false;
   },
 
   onFold(listener: FoldListener): () => void {
