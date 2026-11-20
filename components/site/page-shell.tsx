@@ -22,13 +22,16 @@ const SCENE: Record<PageId, "dawn" | "noon" | "paper" | "storm" | "sunrise"> = {
 export function PageShell({
   id,
   children,
+  data,
 }: {
   id: PageId;
   children: ReactNode;
+  /** Extra data-* attributes for <main>, for a page's own state. */
+  data?: { [key: `data-${string}`]: string };
 }) {
   const entry = page(id);
   return (
-    <main className={`page page--${id}`} data-tone={entry.tone}>
+    <main className={`page page--${id}`} data-tone={entry.tone} {...data}>
       <Shot at={entry.shot} tone={entry.tone} scene={SCENE[id]} />
       <header className="page__head">
         <p className="key label">{entry.label}</p>

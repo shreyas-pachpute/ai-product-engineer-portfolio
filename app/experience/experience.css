@@ -1,0 +1,1709 @@
+/* Experience: dead reckoning -------------------------------------------------
+
+   A navigator's chart over the sea, a pair of brass dividers on it, and the
+   log beside it. Everything is scoped to this page. See
+   components/pages/experience/reckoning.tsx.
+
+     1. Tokens
+     2. The page: two columns on a wide screen, one on a tall one
+     3. The sheet and the chart's drawing
+     4. Ports, fixes, the harbour
+     5. The cartouche and the legend
+     6. The dividers
+     7. The log
+     8. Layouts: which drawing, and where everything goes
+     9. Reduced motion
+   ------------------------------------------------------------------------- */
+
+/* 1. Tokens ---------------------------------------------------------------- */
+
+.page--experience {
+  /* Chart paper: warmer and older than the notebook paper of the log. */
+  --rk-paper: #f1e8d3;
+  --rk-paper-edge: rgb(132 98 44 / 0.16);
+  --rk-shoal: #bad5df;
+  --rk-shoal-2: #d6e5e3;
+  --rk-land: #e8d29b;
+  --rk-land-line: #a5803f;
+  --rk-contour: #3f7898;
+  --rk-grid: rgb(30 80 116 / 0.2);
+  --rk-pencil: #46525c;
+  --rk-brass-hi: #fff0bd;
+  --rk-brass: #cf9f45;
+  --rk-brass-lo: #6d4c17;
+  --rk-steel-hi: #f6f9fb;
+  --rk-steel: #aab5bc;
+  --rk-steel-lo: #4f5b63;
+  /* The log's notebook paper: the same sheet the paper boats are folded from. */
+  --sheet: #f3f0e8;
+  --rule: rgb(96 128 178 / 0.42);
+  --margin: rgb(196 82 76 / 0.6);
+  --margin-ink: #a8403a;
+
+  --rk-top: calc(var(--header-h) + clamp(1rem, 6vh, 4rem));
+  --rk-gap: clamp(2rem, 4.4vw, 4.75rem);
+}
+
+/* 2. The page -------------------------------------------------------------- */
+
+.page--experience .rk-chart {
+  min-width: 0;
+  scroll-margin-top: calc(var(--header-h) + 0.5rem);
+}
+
+.page--experience .rk-chart:focus {
+  outline: none;
+}
+
+.page--experience .rk-log {
+  display: grid;
+  align-content: start;
+  gap: 1.75rem;
+  min-width: 0;
+  max-width: 36rem;
+}
+
+/* With JavaScript, the log shows the pages for the legs the dividers span
+   (the head script sets data-intro; without it, every page shows). */
+:root[data-intro] .page--experience .rk-entry:not([data-on]) {
+  display: none;
+}
+
+/* Without JavaScript the chart is a picture: nothing to drag or press. */
+:root:not([data-intro]) .page--experience :is(.rk-dividers, .rk-cart__how),
+:root:not([data-intro]) .page--experience .rk-readout__months[data-pending] {
+  display: none;
+}
+
+.page--experience .rk-entry {
+  min-width: 0;
+  scroll-margin-top: calc(var(--header-h) + 1rem);
+}
+
+:root[data-intro] .page--experience .rk-entry[data-on] {
+  animation: rk-page-in 620ms var(--ease-out) both;
+}
+
+:root[data-intro] .page--experience .rk-entry[data-on] + .rk-entry[data-on] {
+  animation-delay: 90ms;
+}
+
+@keyframes rk-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.4rem) rotate(0.9deg);
+  }
+}
+
+/* 3. The sheet and the chart's drawing -------------------------------------- */
+
+.page--experience .rk-sheet {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--rk-paper);
+  background-image:
+    radial-gradient(
+      ellipse 75% 70% at 50% 46%,
+      transparent 60%,
+      var(--rk-paper-edge) 100%
+    ),
+    linear-gradient(
+      90deg,
+      transparent calc(50% - 5px),
+      rgb(255 255 255 / 0.3) 50%,
+      rgb(90 66 30 / 0.07) calc(50% + 1.5px),
+      transparent calc(50% + 7px)
+    ),
+    linear-gradient(
+      180deg,
+      transparent calc(50% - 5px),
+      rgb(255 255 255 / 0.28) 50%,
+      rgb(90 66 30 / 0.06) calc(50% + 1.5px),
+      transparent calc(50% + 7px)
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.14 0 0 0 0.11 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  box-shadow:
+    0 0.15rem 0.35rem rgb(11 42 63 / 0.16),
+    0 1.4rem 3.2rem rgb(11 42 63 / 0.3);
+  color: var(--color-ink);
+}
+
+.page--experience .rk-plot {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 600 / 880;
+  /* The page can scroll over the chart; only the dividers' points take a drag. */
+  touch-action: pan-x pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.page--experience .rk-layer,
+.page--experience .rk-art,
+.page--experience .rk-ink {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.page--experience .rk-layer {
+  pointer-events: none;
+}
+
+.page--experience .rk-a-shoal1 {
+  fill: var(--rk-shoal);
+}
+
+.page--experience .rk-a-shoal2 {
+  fill: var(--rk-shoal-2);
+}
+
+.page--experience .rk-a-grid {
+  fill: none;
+  stroke: var(--rk-grid);
+  stroke-width: 0.8;
+}
+
+.page--experience .rk-a-contour {
+  fill: none;
+  stroke: var(--rk-contour);
+  stroke-width: 0.85;
+  opacity: 0.75;
+}
+
+.page--experience .rk-a-dash {
+  stroke-dasharray: 6 3;
+  opacity: 0.6;
+}
+
+.page--experience .rk-a-dot {
+  stroke-dasharray: 0.6 3.2;
+  stroke-linecap: round;
+  stroke-width: 1.3;
+  opacity: 0.55;
+}
+
+.page--experience .rk-a-land {
+  fill: var(--rk-land);
+}
+
+.page--experience .rk-a-hill {
+  fill: none;
+  stroke: var(--rk-land-line);
+  stroke-width: 0.8;
+  opacity: 0.55;
+}
+
+.page--experience .rk-a-faint {
+  opacity: 0.32;
+}
+
+.page--experience .rk-a-shore {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 1.35;
+  stroke-linejoin: round;
+}
+
+.page--experience .rk-a-mole {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+}
+
+.page--experience .rk-a-block {
+  fill: var(--color-ink);
+  opacity: 0.5;
+}
+
+.page--experience .rk-a-flare {
+  fill: var(--color-vermilion);
+  opacity: 0.9;
+}
+
+.page--experience .rk-a-light,
+.page--experience .rk-a-quay {
+  fill: var(--color-ink);
+}
+
+.page--experience .rk-a-sounding {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 450;
+  fill: var(--color-ink);
+  opacity: 0.58;
+  text-anchor: middle;
+}
+
+.page--experience .rk-a-sub {
+  font-size: 7.5px;
+}
+
+.page--experience .rk-a-sea {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 500;
+  fill: var(--rk-contour);
+  opacity: 0.75;
+  text-anchor: middle;
+}
+
+.page--experience .rk-a-rose-ring {
+  fill: none;
+  stroke: var(--color-vermilion);
+  stroke-width: 1;
+  opacity: 0.85;
+}
+
+.page--experience .rk-a-thin {
+  stroke-width: 0.6;
+}
+
+.page--experience .rk-a-rose-ticks {
+  fill: none;
+  stroke: var(--color-vermilion);
+  stroke-width: 0.65;
+  opacity: 0.9;
+}
+
+.page--experience .rk-a-rose-num {
+  font-family: var(--font-sans);
+  font-size: 6.6px;
+  font-weight: 600;
+  fill: var(--color-vermilion);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.page--experience .rk-a-star-dark,
+.page--experience .rk-a-star-hub {
+  fill: var(--color-ink);
+}
+
+.page--experience .rk-a-star-light {
+  fill: var(--rk-paper);
+  stroke: var(--color-ink);
+  stroke-width: 0.6;
+  stroke-linejoin: round;
+}
+
+.page--experience .rk-a-north {
+  fill: var(--color-vermilion);
+}
+
+.page--experience .rk-a-track,
+.page--experience .rk-a-arrow {
+  fill: none;
+  stroke: var(--rk-pencil);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.page--experience .rk-a-pilot {
+  fill: none;
+  stroke: var(--rk-pencil);
+  stroke-width: 1.3;
+  stroke-dasharray: 4 3.5;
+}
+
+.page--experience .rk-a-leg-company {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-style: italic;
+  font-weight: 580;
+  fill: var(--color-ink);
+  text-anchor: middle;
+}
+
+.page--experience .rk-a-leg-title {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 650;
+  font-stretch: 112%;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: var(--rk-pencil);
+  text-anchor: middle;
+}
+
+.page--experience .rk-a-frame,
+.page--experience .rk-a-neat {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 1.1;
+}
+
+.page--experience .rk-a-neat {
+  stroke-width: 0.8;
+}
+
+.page--experience .rk-a-bars {
+  fill: var(--color-ink);
+}
+
+.page--experience .rk-a-ticks {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 0.6;
+}
+
+/* The legs the dividers span are inked over the pencil, in vermilion. The
+   ink is its own layer, so drawing it in never repaints the chart. */
+.page--experience .rk-ink {
+  will-change: transform;
+}
+
+.page--experience .rk-ink__leg {
+  fill: none;
+  stroke: var(--color-vermilion);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 560ms var(--ease-in-out);
+}
+
+:root[data-intro] .page--experience .rk-sheet:not([data-drawn]) .rk-ink__leg {
+  stroke-dashoffset: 1 !important;
+}
+
+.page--experience .rk-sheet[data-legs~="0"] .rk-ink__leg[data-leg="0"],
+.page--experience .rk-sheet[data-legs~="1"] .rk-ink__leg[data-leg="1"],
+.page--experience .rk-sheet[data-legs~="2"] .rk-ink__leg[data-leg="2"],
+.page--experience .rk-sheet[data-legs~="3"] .rk-ink__leg[data-leg="3"],
+.page--experience .rk-sheet[data-legs~="4"] .rk-ink__leg[data-leg="4"],
+.page--experience .rk-sheet[data-legs~="5"] .rk-ink__leg[data-leg="5"] {
+  stroke-dashoffset: 0;
+}
+
+/* 4. Ports, fixes, the harbour ---------------------------------------------- */
+
+.page--experience .rk-spots {
+  position: absolute;
+  inset: 0;
+}
+
+.page--experience .rk-at {
+  position: absolute;
+  left: calc(var(--x) * 100%);
+  top: calc(var(--y) * 100%);
+}
+
+.page--experience .rk-port,
+.page--experience .rk-fix {
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+.page--experience .rk-port {
+  z-index: 3;
+}
+
+.page--experience .rk-fix {
+  z-index: 2;
+}
+
+/* A port: a fix ringed in ink, with its date on a pennant. */
+.page--experience .rk-port__mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 17px;
+  height: 17px;
+  margin: -8.5px 0 0 -8.5px;
+  border-radius: 50%;
+  border: 2px solid var(--color-ink);
+  background: radial-gradient(
+    circle,
+    var(--color-ink) 0 3.2px,
+    var(--rk-paper) 3.7px
+  );
+  transition:
+    transform 260ms var(--ease-swing),
+    background 220ms ease;
+}
+
+.page--experience .rk-port__ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 17px;
+  height: 17px;
+  margin: -8.5px 0 0 -8.5px;
+  border-radius: 50%;
+  border: 2px solid var(--color-vermilion);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/*
+ * The date, on a pennant flown from the port. Which side it flies on is
+ * --sx / --sy (-1, 0 or 1), set per layout; the notch is cut on the far end.
+ */
+.page--experience .rk-port__tag {
+  --n: 0.42rem;
+  --n-right: calc(var(--n) * (var(--sx) + 1) / 2 * var(--sx));
+  --n-left: calc(var(--n) * (1 - var(--sx)) / 2 * var(--sx) * -1);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  padding: 0.28rem calc(0.55rem + var(--n-right)) 0.3rem
+    calc(0.55rem + var(--n-left));
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-size: 0.74rem;
+  white-space: nowrap;
+  translate: calc((var(--sx) - 1) * 50% + var(--sx) * 13px)
+    calc((var(--sy) - 1) * 50% + var(--sy) * 13px);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    calc(100% - var(--n-right)) 50%,
+    100% 100%,
+    0 100%,
+    var(--n-left) 50%
+  );
+  transition:
+    transform 260ms var(--ease-swing),
+    background-color 200ms ease,
+    color 200ms ease;
+}
+
+.page--experience .rk-port[data-now] .rk-port__tag {
+  background: var(--color-vermilion);
+  color: var(--color-ink);
+}
+
+.page--experience .rk-port:is(:hover, :focus-visible) .rk-port__mark {
+  transform: scale(1.22);
+}
+
+.page--experience .rk-port:is(:hover, :focus-visible) .rk-port__tag {
+  transform: translate(calc(var(--sx) * 0.22rem), calc(var(--sy) * 0.22rem));
+}
+
+.page--experience .rk-port:focus-visible .rk-port__tag {
+  outline: 2px solid var(--color-paper);
+  outline-offset: -4px;
+}
+
+.page--experience .rk-port:focus-visible .rk-port__mark {
+  box-shadow:
+    0 0 0 3px var(--rk-paper),
+    0 0 0 5px var(--color-ink);
+}
+
+/* A fix: a small pencilled circle with a dot. */
+.page--experience .rk-fix__mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  border: 1.6px solid var(--rk-pencil);
+  background: radial-gradient(
+    circle,
+    var(--rk-pencil) 0 1.8px,
+    var(--rk-paper) 2.3px
+  );
+  transition:
+    transform 240ms var(--ease-swing),
+    border-color 260ms ease,
+    background 260ms ease;
+}
+
+.page--experience .rk-sheet[data-legs~="0"] .rk-fix[data-leg="0"] .rk-fix__mark,
+.page--experience .rk-sheet[data-legs~="1"] .rk-fix[data-leg="1"] .rk-fix__mark,
+.page--experience .rk-sheet[data-legs~="2"] .rk-fix[data-leg="2"] .rk-fix__mark,
+.page--experience .rk-sheet[data-legs~="3"] .rk-fix[data-leg="3"] .rk-fix__mark,
+.page--experience .rk-sheet[data-legs~="4"] .rk-fix[data-leg="4"] .rk-fix__mark,
+.page--experience
+  .rk-sheet[data-legs~="5"]
+  .rk-fix[data-leg="5"]
+  .rk-fix__mark {
+  border-color: var(--color-ink);
+  background: radial-gradient(
+    circle,
+    var(--color-vermilion) 0 2.3px,
+    var(--rk-paper) 2.8px
+  );
+}
+
+.page--experience .rk-fix:is(:hover, :focus-visible) .rk-fix__mark {
+  transform: scale(1.5);
+}
+
+.page--experience .rk-fix:focus-visible .rk-fix__mark {
+  box-shadow:
+    0 0 0 2.5px var(--rk-paper),
+    0 0 0 4.5px var(--color-ink);
+}
+
+/* The harbour of departure: the town's name, set on the land. */
+.page--experience .rk-harbour {
+  display: grid;
+  justify-items: center;
+  gap: 0.05rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.35rem 0.5rem;
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+  cursor: pointer;
+  translate: -50% -50%;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  z-index: 3;
+}
+
+.page--experience .rk-harbour__name {
+  padding-left: 0.3em;
+  font-family: var(--font-display);
+  font-size: clamp(0.95rem, 0.8rem + 0.5vw, 1.15rem);
+  font-weight: 680;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  text-decoration: underline 1.5px transparent;
+  text-underline-offset: 0.25em;
+  transition: text-decoration-color 200ms ease;
+}
+
+.page--experience .rk-harbour__years {
+  font-size: 0.68rem;
+  color: var(--rk-pencil);
+}
+
+.page--experience .rk-harbour:is(:hover, :focus-visible) .rk-harbour__name,
+.page--experience .rk-harbour[aria-pressed="true"] .rk-harbour__name {
+  text-decoration-color: var(--color-vermilion);
+}
+
+.page--experience .rk-harbour:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: -2px;
+}
+
+/* The pencilled note beside a fix, while it is pointed at. */
+.page--experience .rk-note {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 7;
+  display: grid;
+  gap: 0.25rem;
+  width: min(17.5rem, 72%);
+  padding: 0.6rem 0.8rem 0.7rem;
+  background: var(--sheet);
+  color: var(--color-ink);
+  box-shadow:
+    0 0.1rem 0.25rem rgb(11 42 63 / 0.18),
+    0 0.8rem 1.8rem rgb(11 42 63 / 0.26);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.page--experience .rk-note[data-on] {
+  opacity: 1;
+}
+
+.page--experience .rk-note__head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.7rem;
+  color: var(--rk-pencil);
+}
+
+.page--experience .rk-note__head::before {
+  content: "";
+  flex: none;
+  width: 0.62rem;
+  height: 0.5rem;
+  background: var(--color-vermilion);
+  clip-path: polygon(0 0, 100% 0, 62% 50%, 100% 100%, 0 100%);
+}
+
+.page--experience .rk-note__text {
+  font-size: 0.88rem;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+/* 5. The cartouche and the legend -------------------------------------------- */
+
+.page--experience .rk-cart {
+  position: absolute;
+  left: calc(var(--x) * 100%);
+  top: calc(var(--y) * 100%);
+  z-index: 4;
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  width: calc(var(--w) * 100%);
+  padding: 0.75rem 0.8rem 0.7rem;
+  background: var(--rk-paper);
+  text-align: center;
+  border: 1.5px solid var(--color-ink);
+  box-shadow:
+    inset 0 0 0 3px var(--rk-paper),
+    inset 0 0 0 4px var(--color-ink);
+}
+
+.page--experience .rk-cart__title {
+  font-size: clamp(1.15rem, 0.9rem + 0.6vw, 1.45rem);
+  font-style: italic;
+  font-weight: 560;
+  line-height: 1;
+}
+
+.page--experience .rk-readout {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.4rem 0 0.35rem;
+  border-block: 1px solid rgb(11 42 63 / 0.35);
+}
+
+.page--experience .rk-readout__span {
+  font-size: 0.74rem;
+}
+
+.page--experience .rk-readout__to {
+  color: var(--color-vermilion);
+}
+
+.page--experience .rk-readout__months {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  line-height: 1;
+}
+
+.page--experience .rk-readout__n {
+  min-width: 1.2ch;
+  font-size: clamp(2rem, 1.4rem + 1.6vw, 2.75rem);
+  font-weight: 640;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.page--experience .rk-readout__unit {
+  font-size: 1rem;
+  font-style: italic;
+  font-weight: 520;
+}
+
+.page--experience .rk-readout__what {
+  display: grid;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.page--experience .rk-readout__legs {
+  font-weight: 620;
+  text-wrap: pretty;
+}
+
+.page--experience .rk-readout__fixes {
+  color: var(--rk-pencil);
+}
+
+.page--experience .rk-cart__how {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--rk-pencil);
+  text-wrap: balance;
+}
+
+.page--experience .rk-cart__all {
+  display: inline;
+  min-height: 0;
+  padding: 0.2rem 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline 1.5px var(--color-vermilion);
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.page--experience .rk-cart__all:hover {
+  color: var(--color-vermilion);
+}
+
+.page--experience .rk-legend {
+  position: absolute;
+  left: calc(var(--x) * 100%);
+  top: calc(var(--y) * 100%);
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.9rem;
+  width: calc(var(--w) * 100%);
+  font-size: 0.66rem;
+  font-weight: 560;
+  line-height: 1.3;
+  color: var(--rk-pencil);
+  pointer-events: none;
+}
+
+.page--experience .rk-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.page--experience .rk-legend__port,
+.page--experience .rk-legend__fix {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.6px solid var(--color-ink);
+  background: radial-gradient(
+    circle,
+    var(--color-ink) 0 2px,
+    transparent 2.4px
+  );
+}
+
+.page--experience .rk-legend__fix {
+  width: 9px;
+  height: 9px;
+  border-color: var(--rk-pencil);
+  background: radial-gradient(
+    circle,
+    var(--rk-pencil) 0 1.3px,
+    transparent 1.7px
+  );
+}
+
+.page--experience .rk-legend__scale {
+  font-style: italic;
+}
+
+/* 6. The dividers ------------------------------------------------------------- */
+
+.page--experience .rk-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.page--experience .rk-dividers {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+
+.page--experience .rk-dividers[data-ready] {
+  opacity: 1;
+}
+
+.page--experience .rk-arm,
+.page--experience .rk-shade {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 28px;
+  margin-top: -14px;
+  transform-origin: 0 50%;
+  will-change: transform;
+}
+
+.page--experience .rk-arm__art,
+.page--experience .rk-shade__art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.page--experience .rk-shades {
+  position: absolute;
+  inset: 0;
+  opacity: 1;
+  transition: opacity 220ms ease;
+}
+
+.page--experience .rk-shade {
+  filter: blur(2.4px);
+  opacity: 0.26;
+}
+
+.page--experience .rk-shade__art path {
+  fill: var(--color-ink);
+}
+
+.page--experience .rk-headshade {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgb(11 42 63 / 0.2) 0,
+    rgb(11 42 63 / 0.1) 45%,
+    transparent 70%
+  );
+  will-change: transform;
+}
+
+/* A point held is lifted: its shadow goes softer. */
+.page--experience .rk-dividers[data-drag] .rk-shades {
+  opacity: 0.7;
+}
+
+.page--experience .rk-head {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  will-change: transform;
+  filter: drop-shadow(0 1px 0.5px rgb(11 42 63 / 0.35));
+}
+
+.page--experience .rk-head__art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.page--experience .rk-p-brass {
+  fill: url(#rk-brass);
+}
+
+.page--experience .rk-p-steel,
+.page--experience .rk-p-screw {
+  fill: url(#rk-steel);
+}
+
+.page--experience .rk-p-boss {
+  fill: url(#rk-boss);
+  stroke: var(--rk-brass-lo);
+  stroke-width: 0.8;
+}
+
+.page--experience .rk-p-gleam {
+  fill: none;
+  stroke: var(--rk-brass-hi);
+  stroke-width: 1.3;
+  opacity: 0.85;
+}
+
+.page--experience .rk-p-edge {
+  fill: none;
+  stroke: var(--rk-brass-lo);
+  stroke-width: 1;
+  opacity: 0.45;
+}
+
+.page--experience .rk-p-ridge {
+  fill: none;
+  stroke: var(--rk-brass-lo);
+  stroke-width: 0.7;
+  opacity: 0.35;
+}
+
+.page--experience .rk-p-glint {
+  fill: none;
+  stroke: var(--rk-steel-hi);
+  stroke-width: 0.9;
+  opacity: 0.9;
+}
+
+.page--experience .rk-p-collar {
+  fill: var(--rk-brass-lo);
+}
+
+.page--experience .rk-p-knurl,
+.page--experience .rk-p-grip {
+  fill: none;
+  stroke: var(--rk-brass-lo);
+  stroke-width: 0.85;
+}
+
+.page--experience .rk-p-ring {
+  fill: none;
+  stroke: var(--rk-brass-lo);
+  stroke-width: 0.7;
+  opacity: 0.55;
+}
+
+.page--experience .rk-p-screw {
+  stroke: var(--rk-steel-lo);
+  stroke-width: 0.5;
+}
+
+.page--experience .rk-p-slot {
+  fill: none;
+  stroke: var(--rk-steel-lo);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+}
+
+.page--experience .rk-s-brass-hi {
+  stop-color: var(--rk-brass-hi);
+}
+
+.page--experience .rk-s-brass {
+  stop-color: var(--rk-brass);
+}
+
+.page--experience .rk-s-brass-lo {
+  stop-color: var(--rk-brass-lo);
+}
+
+.page--experience .rk-s-steel-hi {
+  stop-color: var(--rk-steel-hi);
+}
+
+.page--experience .rk-s-steel {
+  stop-color: var(--rk-steel);
+}
+
+.page--experience .rk-s-steel-lo {
+  stop-color: var(--rk-steel-lo);
+}
+
+/* A point: what the hand takes hold of. */
+.page--experience .rk-point {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+  will-change: transform;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.page--experience .rk-dividers[data-drag] .rk-point {
+  cursor: grabbing;
+}
+
+.page--experience .rk-point__ring {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 1.6px dashed var(--color-vermilion);
+  opacity: 0;
+  transform: scale(0.55);
+  transition:
+    opacity 180ms ease,
+    transform 300ms var(--ease-swing);
+}
+
+.page--experience .rk-point:is(:hover, :focus-visible) .rk-point__ring,
+.page--experience
+  .rk-dividers[data-drag="0"]
+  .rk-point[data-i="0"]
+  .rk-point__ring,
+.page--experience
+  .rk-dividers[data-drag="1"]
+  .rk-point[data-i="1"]
+  .rk-point__ring {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Until a point has been taken hold of, both beckon, a few times. */
+.page--experience .rk-dividers[data-ready]:not([data-touched]) .rk-point__ring {
+  animation: rk-beckon 2600ms var(--ease-out) 1400ms 4;
+}
+
+.page--experience
+  .rk-dividers[data-ready]:not([data-touched])
+  .rk-point[data-i="1"]
+  .rk-point__ring {
+  animation-delay: 1750ms;
+}
+
+@keyframes rk-beckon {
+  0% {
+    opacity: 0;
+    transform: scale(0.45);
+  }
+  22% {
+    opacity: 1;
+  }
+  60%,
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+.page--experience .rk-point:focus-visible .rk-point__ring {
+  border: 2px solid var(--color-ink);
+  box-shadow: 0 0 0 2px var(--rk-paper);
+}
+
+.page--experience .rk-point__prick {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--color-ink);
+  box-shadow: 0 0 0 1.5px rgb(241 232 211 / 0.9);
+}
+
+/* The reading on a brass plate, riding with the hinge while a point is held. */
+.page--experience .rk-plate {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  transition: opacity 180ms ease;
+  will-change: transform;
+}
+
+.page--experience .rk-dividers[data-drag] .rk-plate {
+  opacity: 1;
+}
+
+.page--experience .rk-plate__text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  padding: 0.22rem 0.6rem 0.24rem;
+  border-radius: 2px;
+  background: linear-gradient(var(--rk-brass-hi), var(--rk-brass));
+  color: var(--color-ink);
+  font-size: 0.74rem;
+  white-space: nowrap;
+  translate: -50% -50%;
+  box-shadow:
+    inset 0 0 0 1px rgb(109 76 23 / 0.5),
+    0 0.2rem 0.5rem rgb(11 42 63 / 0.3);
+}
+
+/* 7. The log ---------------------------------------------------------------------
+
+   A notebook page: blue rules, a red margin, section names written in the
+   margin. Everything below the page head keeps to the rule (--rl), so the
+   writing sits on the lines.
+   ------------------------------------------------------------------------- */
+
+.page--experience .rk-page {
+  --rl: 1.75rem;
+  --m: 6.25rem;
+  position: relative;
+  padding: 1.6rem 1.6rem 1.4rem 0;
+  background:
+    linear-gradient(
+      90deg,
+      transparent calc(var(--m) - 0.8rem),
+      var(--margin) calc(var(--m) - 0.8rem),
+      var(--margin) calc(var(--m) - 0.8rem + 1.5px),
+      transparent calc(var(--m) - 0.8rem + 1.5px)
+    ),
+    var(--sheet);
+  color: var(--color-ink);
+  box-shadow:
+    0 0.1rem 0.3rem rgb(11 42 63 / 0.14),
+    0 1.2rem 2.8rem rgb(11 42 63 / 0.24);
+}
+
+/* In one column the log is below the chart: a way back up. */
+.page--experience .rk-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: -0.6rem 0 0 var(--m);
+  color: var(--rk-pencil);
+  font-size: 0.74rem;
+  text-decoration: underline 1.5px var(--color-vermilion);
+  text-underline-offset: 0.2em;
+}
+
+.page--experience .rk-page__head {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0 0 1.15rem var(--m);
+}
+
+.page--experience .rk-page__no {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.74rem;
+  color: var(--rk-pencil);
+}
+
+.page--experience .rk-page__no::before {
+  content: "";
+  flex: none;
+  width: 0.7rem;
+  height: 0.55rem;
+  background: var(--color-vermilion);
+  clip-path: polygon(0 0, 100% 0, 62% 50%, 100% 100%, 0 100%);
+}
+
+.page--experience .rk-page__title {
+  font-size: clamp(1.7rem, 1.25rem + 1.3vw, 2.3rem);
+  line-height: 1.02;
+  scroll-margin-top: calc(var(--header-h) + 1rem);
+}
+
+.page--experience .rk-page__title:focus {
+  outline: none;
+}
+
+.page--experience .rk-page__at {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.62em;
+  font-style: italic;
+  font-weight: 540;
+}
+
+.page--experience .rk-page__when {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0;
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+}
+
+.page--experience .rk-page__when > * + *::before {
+  content: "·";
+  margin: 0 0.5rem;
+  color: var(--rk-pencil);
+}
+
+.page--experience .rk-months {
+  color: var(--margin-ink);
+}
+
+/* The ruled part of the page. */
+.page--experience .rk-ruled {
+  display: grid;
+  grid-template-columns: var(--m) minmax(0, 1fr);
+  padding: var(--rl) 0 0;
+  background: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--rl) - 1px),
+      var(--rule) calc(var(--rl) - 1px),
+      var(--rule) var(--rl)
+    )
+    0 -0.42rem / 100% var(--rl);
+  border-top: 1.5px solid var(--rule);
+  line-height: var(--rl);
+  font-size: 0.97rem;
+}
+
+.page--experience .rk-ruled :is(p, ol, dl, dd) {
+  margin: 0;
+}
+
+.page--experience .rk-page__context {
+  grid-column: 2;
+  font-weight: 640;
+  text-wrap: pretty;
+}
+
+.page--experience .rk-line {
+  display: contents;
+}
+
+.page--experience .rk-line:first-child > * {
+  margin-top: 0;
+}
+
+.page--experience .rk-margin {
+  grid-column: 1;
+  margin-top: var(--rl);
+  padding: 0 0.8rem 0 0.9rem;
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-style: italic;
+  font-weight: 560;
+  line-height: var(--rl);
+  text-align: right;
+  color: var(--margin-ink);
+  overflow-wrap: anywhere;
+}
+
+.page--experience .rk-text {
+  grid-column: 2;
+  margin-top: var(--rl);
+  min-width: 0;
+  text-wrap: pretty;
+}
+
+.page--experience .rk-fixes {
+  display: grid;
+  padding: 0;
+  list-style: none;
+}
+
+.page--experience .rk-fixes li {
+  position: relative;
+  isolation: isolate;
+  padding-left: 1.75rem;
+}
+
+/* The number, in the same mark as a fix on the chart. */
+.page--experience .rk-fixes__no {
+  position: absolute;
+  left: 0;
+  top: calc((var(--rl) - 1.2rem) / 2 - 0.12rem);
+  display: grid;
+  place-items: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* A fix chosen on the chart is marked over, as with a highlighter. */
+.page--experience .rk-fixes li::before {
+  content: "";
+  position: absolute;
+  inset: 0.1rem -0.35rem 0.25rem 1.35rem;
+  z-index: -1;
+  background: rgb(255 197 61 / 0.5);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 520ms var(--ease-out);
+}
+
+.page--experience .rk-fixes li[data-hot]::before {
+  transform: scaleX(1);
+}
+
+.page--experience .rk-kicker {
+  grid-column: 2;
+  margin-top: var(--rl) !important;
+  font-size: 1.32rem;
+  font-style: italic;
+  font-weight: 560;
+  line-height: var(--rl);
+  text-wrap: balance;
+}
+
+.page--experience .rk-decisions {
+  display: grid;
+}
+
+.page--experience .rk-decisions dt {
+  font-size: 1.04rem;
+  font-style: italic;
+  font-weight: 600;
+  line-height: var(--rl);
+}
+
+.page--experience .rk-decisions div + div {
+  margin-top: calc(var(--rl) / 2);
+}
+
+/* Earlier and later pages. */
+.page--experience .rk-turn {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: calc(var(--rl) * 1.5);
+  padding-left: var(--m);
+}
+
+.page--experience .rk-turn__link {
+  display: grid;
+  align-content: start;
+  gap: 0.15rem;
+  min-height: 44px;
+  padding: 0.35rem 0;
+  border-top: 1.5px solid var(--color-ink);
+}
+
+.page--experience .rk-turn__link--later {
+  grid-column: 2;
+  text-align: right;
+}
+
+.page--experience .rk-turn__dir {
+  font-size: 0.72rem;
+  color: var(--rk-pencil);
+}
+
+.page--experience
+  .rk-turn__link:not(.rk-turn__link--later)
+  .rk-turn__dir::before {
+  content: "← ";
+}
+
+.page--experience .rk-turn__link--later .rk-turn__dir::after {
+  content: " →";
+}
+
+.page--experience .rk-turn__name {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: underline 1.5px transparent;
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color 180ms ease;
+}
+
+.page--experience .rk-turn__link:is(:hover, :focus-visible) .rk-turn__name {
+  text-decoration-color: var(--color-vermilion);
+}
+
+/* 8. Layouts ------------------------------------------------------------------- */
+
+/* The wide chart: a desktop, or a tablet. */
+.page--experience .rk-layer--tall,
+.page--experience .rk-layer--land {
+  display: none;
+}
+
+.page--experience .rk-at,
+.page--experience .rk-cart,
+.page--experience .rk-legend {
+  --x: var(--x-wide);
+  --y: var(--y-wide);
+  --w: var(--w-wide);
+  --sx: var(--sx-wide);
+  --sy: var(--sy-wide);
+}
+
+/* One column: the head, the chart, then the log. */
+.page--experience .rk-sheet {
+  width: min(100%, 36rem);
+}
+
+/* Two columns: the log under the head, the chart beside them, held still. */
+@media (min-aspect-ratio: 11/10) and (min-width: 52rem) and (min-height: 30.01rem) {
+  .page.page--experience {
+    --mist-body: 0.84;
+    --mist-hold: 30%;
+    --mist-thin: 46%;
+    --mist-end: 64%;
+    grid-template-columns: minmax(0, 34rem) auto;
+    grid-template-rows: auto 1fr;
+    justify-content: start;
+    column-gap: var(--rk-gap);
+  }
+
+  .page--experience > .page__head {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .page--experience > .rk-chart {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    position: sticky;
+    top: var(--rk-top);
+    align-self: start;
+  }
+
+  .page--experience > .rk-log {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .page--experience .rk-back {
+    display: none;
+  }
+
+  .page--experience .rk-sheet {
+    width: min(
+      calc((100svh - var(--rk-top) - 1.5rem) * 600 / 880),
+      calc(100vw - 2 * var(--gutter) - 21rem - var(--rk-gap))
+    );
+  }
+}
+
+/* A phone held upright: the long strip, the reading floating at the foot. */
+@media (max-width: 40rem) {
+  .page--experience .rk-layer--wide {
+    display: none;
+  }
+
+  .page--experience .rk-layer--tall {
+    display: block;
+  }
+
+  .page--experience .rk-at,
+  .page--experience .rk-legend {
+    --x: var(--x-tall);
+    --y: var(--y-tall);
+    --w: var(--w-tall);
+    --sx: var(--sx-tall);
+    --sy: var(--sy-tall);
+  }
+
+  .page--experience .rk-plot {
+    aspect-ratio: 400 / 1040;
+  }
+
+  .page--experience .rk-chart {
+    margin-inline: calc(0.5rem - var(--gutter));
+  }
+
+  .page--experience .rk-sheet {
+    width: 100%;
+  }
+
+  .page--experience .rk-cart {
+    position: sticky;
+    order: 2;
+    left: auto;
+    top: auto;
+    bottom: 0.6rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    justify-items: start;
+    align-items: center;
+    gap: 0.1rem 0.75rem;
+    width: auto;
+    margin: -0.25rem 0.6rem 0.6rem;
+    padding: 0.55rem 0.8rem 0.6rem;
+    text-align: left;
+    box-shadow:
+      inset 0 0 0 3px var(--rk-paper),
+      inset 0 0 0 4px var(--color-ink),
+      0 0.6rem 1.4rem rgb(11 42 63 / 0.25);
+  }
+
+  .page--experience .rk-cart__title {
+    font-size: 1rem;
+  }
+
+  .page--experience .rk-readout {
+    display: contents;
+  }
+
+  .page--experience .rk-readout__span {
+    grid-column: 1;
+  }
+
+  .page--experience .rk-readout__months {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
+
+  .page--experience .rk-readout__what {
+    grid-column: 1;
+    font-size: 0.74rem;
+  }
+
+  .page--experience .rk-cart__how {
+    grid-column: 1 / -1;
+    margin-top: 0.15rem;
+    font-size: 0.7rem;
+  }
+
+  /* The hint goes once the dividers have been used. */
+  .page--experience .rk-sheet:has(.rk-dividers[data-touched]) .rk-cart__hint {
+    display: none;
+  }
+
+  .page--experience
+    .rk-sheet:has(.rk-dividers[data-touched])
+    .rk-cart__all::first-letter {
+    text-transform: uppercase;
+  }
+
+  .page--experience .rk-log {
+    margin-inline: calc(0.5rem - var(--gutter));
+  }
+
+  .page--experience .rk-page {
+    --m: 1.9rem;
+    padding: 1.2rem 1rem 1.1rem 0;
+  }
+
+  .page--experience .rk-ruled {
+    font-size: 0.95rem;
+  }
+
+  /* In the margin there is room only for the red line: names go above. */
+  .page--experience .rk-margin {
+    grid-column: 2;
+    padding: 0;
+    text-align: left;
+  }
+
+  .page--experience .rk-margin + .rk-text {
+    margin-top: 0;
+  }
+
+  .page--experience .rk-turn {
+    grid-template-columns: 1fr;
+  }
+
+  .page--experience .rk-turn__link--later {
+    grid-column: 1;
+  }
+}
+
+/* A phone held sideways: the chart runs across, the reading on it. */
+@media (min-aspect-ratio: 11/10) and (max-height: 30rem) {
+  .page--experience .rk-layer--wide,
+  .page--experience .rk-layer--tall {
+    display: none;
+  }
+
+  .page--experience .rk-layer--land {
+    display: block;
+  }
+
+  .page--experience .rk-at,
+  .page--experience .rk-cart,
+  .page--experience .rk-legend {
+    --x: var(--x-land);
+    --y: var(--y-land);
+    --w: var(--w-land);
+    --sx: var(--sx-land);
+    --sy: var(--sy-land);
+  }
+
+  .page--experience .rk-plot {
+    aspect-ratio: 1100 / 440;
+  }
+
+  .page--experience .rk-sheet {
+    width: min(100%, calc((100svh - var(--header-h) - 1rem) * 2.5));
+  }
+
+  /* The cartouche, set compact: the number to the right of the words. */
+  .page--experience .rk-cart {
+    grid-template-columns: minmax(0, 1fr) auto;
+    justify-items: start;
+    align-items: center;
+    gap: 0 0.6rem;
+    padding: 0.45rem 0.65rem 0.4rem;
+    text-align: left;
+  }
+
+  .page--experience .rk-cart__title {
+    font-size: 0.92rem;
+  }
+
+  .page--experience .rk-readout {
+    display: contents;
+  }
+
+  .page--experience .rk-readout__span {
+    grid-column: 1;
+    font-size: 0.66rem;
+  }
+
+  .page--experience .rk-readout__months {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
+
+  .page--experience .rk-readout__n {
+    font-size: 1.6rem;
+  }
+
+  .page--experience .rk-readout__unit {
+    font-size: 0.85rem;
+  }
+
+  .page--experience .rk-readout__what {
+    display: block;
+    grid-column: 1;
+    font-size: 0.64rem;
+  }
+
+  .page--experience .rk-readout__fixes::before {
+    content: " · ";
+  }
+
+  .page--experience .rk-cart__how {
+    grid-column: 1 / -1;
+    font-size: 0.64rem;
+  }
+
+  .page--experience .rk-cart__hint {
+    display: none;
+  }
+
+  .page--experience .rk-cart__all::first-letter {
+    text-transform: uppercase;
+  }
+
+  .page--experience .rk-legend {
+    font-size: 0.6rem;
+  }
+}
+
+/* A small phone: the floating reading keeps to two or three lines. */
+@media (max-width: 40rem) and (max-height: 44rem) {
+  .page--experience .rk-cart__hint {
+    display: none;
+  }
+
+  .page--experience .rk-cart__all::first-letter {
+    text-transform: uppercase;
+  }
+}
+
+/* 9. Reduced motion ----------------------------------------------------------------
+   (app/globals.css already stops every animation and transition on .page;
+   the dividers' springs check the same setting and jump instead.) */
+
+@media (prefers-reduced-motion: reduce) {
+  .page--experience .rk-ink__leg,
+  .page--experience .rk-fixes li::before {
+    transition: none;
+  }
+
+  :root[data-intro] .page--experience .rk-entry[data-on] {
+    animation: none;
+  }
+}

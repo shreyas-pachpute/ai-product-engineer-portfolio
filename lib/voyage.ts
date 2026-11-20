@@ -1,4 +1,5 @@
 import type { World, WorldReadout } from "@/components/world/sea";
+import type { BeaconDef } from "@/components/world/sea/beacons";
 
 /**
  * The one shared piece of client state: where the reader is in the
@@ -29,6 +30,9 @@ let coordinate = 0;
 let world: World | null = null;
 let folds = 0;
 let quietUntil = 0;
+let trialKind = -1;
+let beaconDefs: readonly BeaconDef[] = [];
+let bearingDegrees = 0;
 let travel: ((target: number, instant?: boolean) => void) | null = null;
 
 export const voyage = {
@@ -63,6 +67,9 @@ export const voyage = {
     };
     // Start where the page already is, not at the top.
     next.setChapter(coordinate, true);
+    next.setTrial(trialKind);
+    next.setBeacons(beaconDefs);
+    next.setBearing(bearingDegrees);
   },
 
   onFrame(listener: FrameListener): () => void {
@@ -96,6 +103,28 @@ export const voyage = {
    */
   lean(slot: number, kind: number): boolean {
     return world ? world.lean(slot, kind) : false;
+  },
+
+  /**
+   * Sea trials (the Projects page): puts the ship through one of the six
+   * pressures' conditions, or back to calm with -1. Remembered, so a world
+   * that arrives later starts in the right weather.
+   */
+  trial(kind: number): void {
+    trialKind = kind;
+    world?.setTrial(kind);
+  },
+
+  /** Lights on the night coast (the Achievements page); [] for none. */
+  beacons(defs: readonly BeaconDef[]): void {
+    beaconDefs = defs;
+    world?.setBeacons(defs);
+  },
+
+  /** Turns the camera's line of sight, degrees to the right; 0 to reset. */
+  bearing(degrees: number): void {
+    bearingDegrees = degrees;
+    world?.setBearing(degrees);
   },
 
   onFold(listener: FoldListener): () => void {

@@ -333,11 +333,11 @@ export const LOGBOOK: readonly LogbookEntry[] = [];
  * world's timeline, past the end of the crossing) and laid out on its own
  * idea rather than a shared template:
  *
- *   Projects      the fleet — what has been put in the water
- *   Skills        the rigging — every line has one job
- *   Experience    the log — dated entries, newest first
- *   Achievements  lights — fixed points others can check
- *   Education     the plans — where the trade was learned
+ *   Projects      sea trials — the real ships, under the same pressures
+ *   Skills        the sail plan — every line has one job
+ *   Experience    dead reckoning — a chart of the track, leg by leg
+ *   Achievements  the List of Lights — fixed points anyone can check
+ *   Education     unfold the boat — where the trade was learned
  *
  * What they say comes from lib/content.ts. A page with nothing to list
  * shows its structure and says it is waiting, rather than inventing.
@@ -367,8 +367,8 @@ export const PAGES: readonly SitePage[] = [
     label: "Projects",
     shot: 10,
     tone: "day",
-    title: "The fleet.",
-    line: "A shipwright is judged by what is afloat. These are the AI products and systems I have built: two in service at companies, the rest in the open.",
+    title: "Sea trials.",
+    line: "On the crossing you sank paper boats. These are the real ships: choose one, put it through the same pressures, and see what holds it.",
   },
   {
     id: "skills",
@@ -376,8 +376,8 @@ export const PAGES: readonly SitePage[] = [
     label: "Skills",
     shot: 6,
     tone: "day",
-    title: "The rigging.",
-    line: "Rigging is how a ship turns wind into direction: every line has one job. These are the skills I use to turn an AI model into a product.",
+    title: "The sail plan.",
+    line: "A ship's rigging turns wind into direction, and every line has one job. Give the ship an order and see which of my skills it takes.",
   },
   {
     id: "experience",
@@ -385,8 +385,8 @@ export const PAGES: readonly SitePage[] = [
     label: "Experience",
     shot: 7,
     tone: "day",
-    title: "The log.",
-    line: "A ship's log records where she has been and what happened there. This is mine: the roles I have held and what I built in each.",
+    title: "Dead reckoning.",
+    line: "A navigator finds the ship from a known start and each leg sailed. This is my track: where I started, each role a leg, and what I built along the way.",
   },
   {
     id: "achievements",

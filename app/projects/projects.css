@@ -1,0 +1,550 @@
+/* Projects: sea trials ---------------------------------------------------------
+
+   The register of four vessels, each vessel's trial log and story, and the
+   tag that rides on the 3D ship. Scoped to this page.
+   See components/pages/projects/sea-trials.tsx.
+   ------------------------------------------------------------------------- */
+
+.page--projects {
+  --sheet: #f3f0e8;
+  --rule: rgb(96 128 178 / 0.42);
+  --margin: rgb(196 82 76 / 0.55);
+}
+
+.page--projects .trials {
+  display: grid;
+  gap: clamp(1.1rem, 2.6vh, 1.8rem);
+  max-width: 40rem;
+}
+
+/* This page's head is shorter than the others: the controls come first. */
+.page--projects .page__head {
+  gap: 0.55rem;
+}
+
+/* With JavaScript, one vessel at a time (the head script sets data-intro). */
+:root[data-intro] .page--projects .trials__vessel:not([data-on]) {
+  display: none;
+}
+
+:root:not([data-intro]) .page--projects .trials__register {
+  display: none;
+}
+
+/* The register: four berths, ruled like a ship's register. */
+.page--projects .trials__register {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 2px solid currentColor;
+  border-bottom: 1.5px solid rgb(from currentColor r g b / 0.35);
+}
+
+.page--projects .trials__tab {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 0.15rem;
+  min-height: 4.4rem;
+  padding: 0.6rem 0.8rem 0.65rem;
+  border: 0;
+  border-right: 1.5px solid rgb(from currentColor r g b / 0.18);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
+}
+
+.page--projects .trials__tab:last-child {
+  border-right: 0;
+}
+
+.page--projects .trials__tab:hover {
+  background: rgb(from currentColor r g b / 0.06);
+}
+
+.page--projects .trials__tab[aria-selected="true"] {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+/* The pennant hoisted over the chosen berth. */
+.page--projects .trials__tab[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0.8rem;
+  top: -0.6rem;
+  width: 1.1rem;
+  height: 0.75rem;
+  background: var(--color-vermilion);
+  clip-path: polygon(0 0, 100% 0, 62% 50%, 100% 100%, 0 100%);
+}
+
+.page--projects .trials__no {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+.page--projects .trials__name {
+  font-family: var(--font-display);
+  font-variation-settings: var(--display-axes);
+  font-weight: 600;
+  font-size: clamp(1.05rem, 0.85rem + 0.6vw, 1.35rem);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.page--projects .trials__class {
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-stretch: 112%;
+  opacity: 0.75;
+}
+
+.page--projects .trials__tab:focus-visible {
+  outline-offset: -4px;
+}
+
+/* A vessel. */
+.page--projects .trials__vessel {
+  display: grid;
+  gap: clamp(1rem, 2.4vh, 1.6rem);
+  animation: trials-in 520ms var(--ease-out) both;
+}
+
+.page--projects .trials__head {
+  display: grid;
+  justify-items: start;
+  gap: 0.4rem;
+}
+
+.page--projects .trials__title {
+  font-size: clamp(2.1rem, 1.4rem + 2.1vw, 3.2rem);
+}
+
+.page--projects .trials__kicker {
+  max-width: 32rem;
+  font-size: clamp(1.2rem, 0.95rem + 0.85vw, 1.6rem);
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+}
+
+/* The trial log: a sheet of the boats' ruled paper. */
+.page--projects .trials__log {
+  position: relative;
+  padding: 0.4rem 1.1rem 0.9rem 3.1rem;
+  color: var(--color-ink);
+  background:
+    linear-gradient(
+      90deg,
+      transparent 2.35rem,
+      var(--margin) 2.35rem,
+      var(--margin) calc(2.35rem + 1.5px),
+      transparent calc(2.35rem + 1.5px)
+    ),
+    var(--sheet);
+  /* Square to the page, with a tight shadow. A tilted sheet under a wide
+     soft shadow cost a 130 ms frame the first time each vessel's log was
+     drawn, while the sea kept the GPU busy. */
+  box-shadow:
+    0 1px 0 rgb(11 42 63 / 0.06),
+    0 0.45rem 0.7rem -0.3rem rgb(11 42 63 / 0.42);
+}
+
+.page--projects .trials__log-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0 0.55rem;
+  border-bottom: 1.5px solid var(--rule);
+}
+
+.page--projects .trials__count {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--pencil);
+}
+
+.page--projects .trials__records {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.page--projects .trials__record {
+  position: relative;
+  border-bottom: 1.5px solid var(--rule);
+}
+
+.page--projects .trials__pressure {
+  display: grid;
+  gap: 0.1rem;
+  width: 100%;
+  min-height: 2.9rem;
+  padding: 0.55rem 0 0.5rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.page--projects .trials__ask {
+  font-size: 1.18rem;
+  font-style: italic;
+  font-weight: 540;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  transition: translate 200ms var(--ease-out);
+}
+
+.page--projects .trials__part {
+  font-size: 0.72rem;
+  color: var(--pencil);
+}
+
+/* The mark in the margin: hollow until run, filled while it runs. */
+.page--projects .trials__record::before {
+  content: "";
+  position: absolute;
+  left: -2.15rem;
+  top: 0.9rem;
+  width: 0.85rem;
+  height: 0.65rem;
+  border: 1.5px solid var(--color-vermilion);
+  clip-path: polygon(0 0, 100% 0, 62% 50%, 100% 100%, 0 100%);
+  opacity: 0.55;
+}
+
+.page--projects .trials__record[data-seen]::before {
+  background: rgb(255 75 43 / 0.35);
+  opacity: 1;
+}
+
+.page--projects .trials__record[data-on]::before {
+  background: var(--color-vermilion);
+  opacity: 1;
+}
+
+.page--projects .trials__pressure:hover .trials__ask,
+.page--projects .trials__pressure:focus-visible .trials__ask {
+  translate: 0.3rem 0;
+}
+
+.page--projects .trials__record[data-on] .trials__ask {
+  text-decoration: underline;
+  text-decoration-color: var(--color-vermilion);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+}
+
+/* What held: written in when the trial is run (and stays). */
+.page--projects .trials__held {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0 0 0.85rem;
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+
+.page--projects .trials__held .textlink {
+  justify-self: start;
+  padding: 0.15rem 0;
+  font-size: 0.78rem;
+}
+
+:root[data-intro]
+  .page--projects
+  .trials__record:not([data-seen], [data-on])
+  .trials__held {
+  display: none;
+}
+
+.page--projects .trials__record[data-on] .trials__held {
+  animation: trials-write 600ms var(--ease-out) both;
+}
+
+/* The story. */
+.page--projects .trials__story {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.page--projects .trials__story section {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.page--projects .trials__story h3 {
+  margin: 0;
+}
+
+.page--projects .trials__story p {
+  max-width: 36rem;
+  line-height: 1.5;
+}
+
+.page--projects .trials__decisions {
+  display: grid;
+  gap: 0;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1.5px solid rgb(from currentColor r g b / 0.3);
+}
+
+.page--projects .trials__decisions li {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.8fr) minmax(0, 1.6fr);
+  gap: 0.2rem 1.2rem;
+  padding: 0.7rem 0;
+  border-bottom: 1.5px solid rgb(from currentColor r g b / 0.18);
+}
+
+.page--projects .trials__decisions strong {
+  font-size: 1.08rem;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.page--projects .trials__decisions span {
+  line-height: 1.45;
+}
+
+.page--projects .trials__stack {
+  font-weight: 520;
+}
+
+.page--projects .trials__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+}
+
+/* The tag on the ship. Positioned each frame at the part that held. */
+.page--projects .trials__tag {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 12;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  transform: translate3d(var(--x, -100px), var(--y, -100px), 0);
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+.page--projects .trials__tag[data-on] {
+  opacity: 1;
+}
+
+/* The pin on the part, and the line out to the tag. */
+.page--projects .trials__tag::before {
+  content: "";
+  position: absolute;
+  left: -0.42rem;
+  top: -0.42rem;
+  width: 0.84rem;
+  height: 0.84rem;
+  border-radius: 50%;
+  background: var(--color-vermilion);
+  box-shadow:
+    0 0 0 0.25rem rgb(255 75 43 / 0.28),
+    0 0 1rem rgb(255 75 43 / 0.6);
+  animation: trials-pulse 2.2s ease-in-out infinite;
+}
+
+.page--projects .trials__tag::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4.2rem;
+  height: 1.5px;
+  background: var(--sheet);
+  box-shadow: 0 1px 1px rgb(11 42 63 / 0.4);
+  transform-origin: 0 0;
+  rotate: -32deg;
+}
+
+.page--projects .trials__tag[data-side="left"]::after {
+  rotate: -148deg;
+}
+
+.page--projects .trials__tag-sheet {
+  position: absolute;
+  left: 3.4rem;
+  bottom: 1.9rem;
+  display: grid;
+  gap: 0.4rem;
+  width: min(21rem, 34vw);
+  padding: 0.75rem 1rem 0.8rem;
+  background: var(--sheet);
+  color: var(--color-ink);
+  box-shadow: 0 1rem 2rem -0.4rem rgb(11 42 63 / 0.45);
+  rotate: -1deg;
+  animation: trials-tag 520ms var(--ease-out) both;
+}
+
+.page--projects .trials__tag[data-side="left"] .trials__tag-sheet {
+  left: auto;
+  right: 3.4rem;
+  rotate: 1deg;
+}
+
+.page--projects .trials__tag-part {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-vermilion);
+}
+
+.page--projects .trials__tag-part::before {
+  content: "";
+  flex: none;
+  width: 0.7rem;
+  height: 0.55rem;
+  background: var(--color-vermilion);
+  clip-path: polygon(0 0, 100% 0, 62% 50%, 100% 100%, 0 100%);
+}
+
+.page--projects .trials__tag-text {
+  font-size: 1.15rem;
+  font-style: italic;
+  font-weight: 520;
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+}
+
+.page--projects .trials__tag-ship {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--pencil);
+}
+
+/* The smaller craft. */
+.page--projects .series {
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+  max-width: 42rem;
+  margin-top: clamp(1rem, 4vh, 2.5rem);
+}
+
+.page--projects .series__title {
+  font-size: clamp(1.9rem, 1.2rem + 2vw, 2.9rem);
+}
+
+.page--projects .series__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.1rem clamp(1.5rem, 3vw, 2.75rem);
+  width: 100%;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.page--projects .series__list li {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  font-size: 0.95rem;
+  line-height: 1.42;
+}
+
+.page--projects .series__list a {
+  padding: 0.25rem 0;
+  font-size: 1.22rem;
+  letter-spacing: -0.012em;
+  line-height: 1.15;
+}
+
+@keyframes trials-in {
+  from {
+    opacity: 0;
+    translate: 0 0.8rem;
+  }
+}
+
+@keyframes trials-write {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes trials-tag {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem) scale(0.96);
+  }
+}
+
+@keyframes trials-pulse {
+  50% {
+    box-shadow:
+      0 0 0 0.5rem rgb(255 75 43 / 0.1),
+      0 0 1.6rem rgb(255 75 43 / 0.5);
+  }
+}
+
+@media (max-width: 40rem) {
+  /* Two berths to a row, so all four ships are in view at once. */
+  .page--projects .trials__register {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .page--projects .trials__tab {
+    min-height: 3.9rem;
+    border-bottom: 1.5px solid rgb(from currentColor r g b / 0.18);
+  }
+
+  .page--projects .trials__tab:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .page--projects .trials__log {
+    padding-left: 2.6rem;
+    rotate: none;
+    background:
+      linear-gradient(
+        90deg,
+        transparent 1.9rem,
+        var(--margin) 1.9rem,
+        var(--margin) calc(1.9rem + 1.5px),
+        transparent calc(1.9rem + 1.5px)
+      ),
+      var(--sheet);
+  }
+
+  .page--projects .trials__record::before {
+    left: -1.75rem;
+  }
+
+  .page--projects .trials__decisions li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page--projects .trials__vessel,
+  .page--projects .trials__record[data-on] .trials__held,
+  .page--projects .trials__tag-sheet,
+  .page--projects .trials__tag::before {
+    animation: none;
+  }
+}

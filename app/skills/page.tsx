@@ -1,62 +1,45 @@
 import type { Metadata } from "next";
+import { NO_SCRIPT } from "@/components/pages/skills/no-script";
+import { SailPlan } from "@/components/pages/skills/sail-plan";
+import { Schedule } from "@/components/pages/skills/schedule";
 import { PageShell, Waiting } from "@/components/site/page-shell";
 import { SKILLS } from "@/lib/content";
+import "./skills.css";
 
 export const metadata: Metadata = {
   title: "Skills",
   description:
-    "The skills Shreyas Pachpute uses to turn an AI model into a product.",
+    "The skills Shreyas Pachpute uses to turn an AI model into a product, drawn as a ship's sail plan: give it a job and the lines that job takes haul taut.",
   alternates: { canonical: "/skills" },
 };
 
 /**
- * Skills, as rigging.
+ * Skills, as a sail plan.
  *
- * Each group is a mast: a tall rule with its name at the head. Each skill
- * is a line made fast to it, and the ones he would lead with are drawn
- * heavier and carry a pennant. With nothing supplied yet, the masts stand
- * bare, so the layout can be judged without a single made-up skill.
+ * A shipwright's sail plan is the drawing of a ship's masts, sails and
+ * rigging. Here every line of running rigging is a skill. The visitor gives
+ * the ship an order, a job it could be hired for (ORDERS in lib/content.ts),
+ * and the lines that job takes haul taut while the rest go slack, so the
+ * skills read as combinations that do real work rather than a list of
+ * keywords. The rigging schedule under the drawing lists every skill, with
+ * where it was used, in plain text.
  */
-const BARE = [5, 4, 4];
-
 export default function SkillsPage() {
-  const empty = SKILLS.length === 0;
-  return (
-    <PageShell id="skills">
-      {empty ? (
+  if (SKILLS.length === 0) {
+    return (
+      <PageShell id="skills">
         <Waiting what="skills, grouped, with the strongest marked" />
-      ) : null}
-      <div className="rig" aria-hidden={empty ? true : undefined}>
-        {empty
-          ? BARE.map((lines, mast) => (
-              <section className="rig__mast" key={mast}>
-                <ul className="rig__lines">
-                  {Array.from({ length: lines }, (_, line) => (
-                    <li className="rig__line rig__line--bare" key={line} />
-                  ))}
-                </ul>
-              </section>
-            ))
-          : SKILLS.map((group) => (
-              <section className="rig__mast" key={group.name}>
-                <h2 className="display rig__name">{group.name}</h2>
-                <ul className="rig__lines">
-                  {group.skills.map((skill) => (
-                    <li
-                      className="rig__line"
-                      key={skill.name}
-                      data-strong={skill.strong ? "" : undefined}
-                    >
-                      <span className="rig__skill">{skill.name}</span>
-                      {skill.evidence ? (
-                        <span className="rig__evidence">{skill.evidence}</span>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
-      </div>
+      </PageShell>
+    );
+  }
+  return (
+    <PageShell id="skills" data={{ "data-order": "0" }}>
+      <noscript>
+        <style>{NO_SCRIPT}</style>
+      </noscript>
+      <SailPlan>
+        <Schedule />
+      </SailPlan>
     </PageShell>
   );
 }

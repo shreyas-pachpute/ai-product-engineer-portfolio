@@ -1,7 +1,7 @@
-import { Fraunces, Mona_Sans } from "next/font/google";
+import { Fraunces, Geist_Mono, Mona_Sans } from "next/font/google";
 
 /**
- * Two typefaces, with clearly different jobs.
+ * Three typefaces, with clearly different jobs.
  *
  * FRAUNCES — the voice. A soft, slightly wonky old-style serif, loaded as
  * one variable file with four axes:
@@ -9,10 +9,10 @@ import { Fraunces, Mona_Sans } from "next/font/google";
  *   opsz 9–144     optical size (the browser picks it from font-size)
  *   SOFT 0–100     how rounded the terminals are
  *   WONK 0–1       the "leaning" alternates for h, n, m…
- * It sets every headline and the wordmark. At display size with SOFT up it
- * reads like lettering cut for a print, which is the register the whole
- * illustrated world is in — and it is about as far from the grotesque of a
- * typical developer site as a typeface can get while staying legible.
+ * It sets every headline and the wordmark, cut sharp (SOFT 0, WONK 0; see
+ * --display-axes in app/globals.css): over the photographic sea the square
+ * terminals read more precise and more expensive than the soft cut did,
+ * while the family keeps the site's voice.
  *
  * MONA SANS — the instrument. A plain grotesque for everything that is
  * read rather than looked at: body copy, labels, buttons. Its width axis
@@ -38,6 +38,18 @@ export const fontSans = Mona_Sans({
   display: "swap",
 });
 
-export const fontVariables = [fontDisplay.variable, fontSans.variable].join(
-  " ",
-);
+/**
+ * GEIST MONO — the readouts. Bearings, light characters, timings and other
+ * figures that should look measured rather than written.
+ */
+export const fontMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+  display: "swap",
+});
+
+export const fontVariables = [
+  fontDisplay.variable,
+  fontSans.variable,
+  fontMono.variable,
+].join(" ");

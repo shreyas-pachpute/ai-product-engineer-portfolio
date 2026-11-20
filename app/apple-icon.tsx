@@ -2,8 +2,8 @@ import { ImageResponse } from "next/og";
 import { MarkImage, PAINT } from "@/lib/share-image";
 
 /**
- * Home-screen icon: the porthole badge without the porthole, because iOS
- * rounds the corners itself. The browser-tab icon is app/icon.svg.
+ * Home-screen icon: the mark in paper and vermilion on navy. iOS rounds the
+ * corners itself. The browser-tab icon is app/icon.svg.
  */
 
 export const size = { width: 180, height: 180 };
@@ -18,10 +18,10 @@ export default function AppleIcon() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: PAINT.vermilion,
+        backgroundColor: PAINT.ink,
       }}
     >
-      <MarkImage size={118} line={PAINT.paper} sail={PAINT.sun} />
+      <MarkImage size={128} line={PAINT.paper} pennant={PAINT.vermilion} />
     </div>,
     size,
   );

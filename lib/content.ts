@@ -137,6 +137,137 @@ export const SKILLS: readonly SkillGroup[] = [
 ];
 
 /* -------------------------------------------------------------------------
+   Stories: a piece of work told the way a hiring manager reads it.
+   The kicker is his own line, from his notes. Every other sentence is a
+   fact from the sources named at the top of this file.
+   ------------------------------------------------------------------------- */
+
+export type Story = {
+  /** One line, in his own words. */
+  kicker: string;
+  problem: string;
+  built: string;
+  /** The choices a weaker engineer would have got wrong, and why. */
+  decisions: readonly { title: string; body: string }[];
+  result: string;
+};
+
+const DTAXO_STORY: Story = {
+  kicker: "In tax, a confident wrong number is worse than no number.",
+  problem:
+    "A CPA firm's filing season is a mountain of paper: W-2s, 1099s, 1098s, K-1s, 80-page brokerage statements, sideways scans, handwritten notes. Someone reads all of it, builds the workpapers, prepares the return, reviews it and keys it into the tax software by hand. A corrected 1099 in March forces the whole chain to be redone, and firms cannot hire their way out of a three-month spike.",
+  built:
+    "The AI backend for the whole pipeline. Documents in any condition are classified and extracted into tax-form schemas, with completeness tracking so the firm knows what is still missing. From those values it builds the workbook and leadsheet, then prepares and first-reviews the return, which is keyed into the firm's own Drake or CCH Axcess for a person to sign.",
+  decisions: [
+    {
+      title: "Models over templates",
+      body: "LLM-based extraction, because tax documents arrive in every layout and condition, and a fixed template parser breaks on the first sideways scan.",
+    },
+    {
+      title: "Traceable, or it does not ship",
+      body: "Every value is tied to the page it came from, because a plausible number is the most dangerous kind of error in a tax return.",
+    },
+    {
+      title: "Let the AI decide, and say why",
+      body: "Preparer judgment calls are made by the AI, flagged and documented with the reasoning. Once the AI could explain its decisions, reviewers trusted the pipeline.",
+    },
+    {
+      title: "Re-run, do not restart",
+      body: "A late or corrected document re-runs extraction, workpapers and the return, instead of starting the client over.",
+    },
+  ],
+  result:
+    "Per dtaxo.com: 8,000+ returns processed for 119 CPA firms and 2,800+ client entities, with firms live on their first return within 24 hours. 1040s run on Drake and CCH Axcess, 1120-S on Drake.",
+};
+
+const COMMERCIENT_STORY: Story = {
+  kicker:
+    "A $12,000-a-month chatbot that could not see the business, replaced by one that could.",
+  problem:
+    "Commercient's value is the data it syncs between ERP, CRM and eCommerce systems, yet the work around that data was manual: support looked up orders and invoices by hand, sales qualified leads themselves, and data questions needed someone to write SQL. The website chat ran on Drift at about $12,000 a month, and it could not see any of the business data the platform already held.",
+  built:
+    "A LangGraph sales agent grounded in the synced ERP and CRM data, which replaced Drift; a support agent that answers from live order, invoice and account data; a SQL View Generator; a self-serve bot builder; and the scraping and ingestion pipelines that feed them, on open-weight models served from the company's own GPUs.",
+  decisions: [
+    {
+      title: "Inside the product, not beside it",
+      body: "The agents shipped inside the existing .NET product, where the data and the customers already were.",
+    },
+    {
+      title: "Own the models",
+      body: "Open-weight LLMs served with vLLM on in-house GPUs instead of paying per token, chosen for throughput.",
+    },
+    {
+      title: "State you can debug",
+      body: "LangGraph, because it makes agent state explicit, and you cannot support what you cannot inspect.",
+    },
+    {
+      title: "A systems problem first",
+      body: "Putting AI into a product with customers is a systems problem first and a model problem second.",
+    },
+  ],
+  result:
+    "The Drift bill went, replaced by an agent that knows the business. Support, sales and data work that was fully manual now runs as agents inside the product.",
+};
+
+const DISPATCH_STORY: Story = {
+  kicker:
+    "Most businesses do not have a data problem. They have a paperwork problem.",
+  problem:
+    "Invoices arrive as PDFs, orders live in a spreadsheet, questions come by email, and a few people spend their week moving facts from one to another. Every AI demo makes this look solved. In production it fails on the boring parts: an unsupported number in a reply, an action nobody approved.",
+  built:
+    "An AI operations team: a dispatcher, six specialist agents and an independent Reviewer, with a policy that decides what runs on its own and what waits for a person, and a control room that shows what happened, what it cost and what is waiting.",
+  decisions: [
+    {
+      title: "Grounded, or it does not say it",
+      body: "Every extracted value carries a quote that must appear word for word in the source; one retry, then a person.",
+    },
+    {
+      title: "Policy in code, not in the prompt",
+      body: "A YAML approval matrix, evaluated in code, decides auto, notify or approve. A model never sets its own permissions.",
+    },
+    {
+      title: "The arithmetic is not the model's job",
+      body: "The three-way match of invoice, order and receipt is computed in code; the model only explains it.",
+    },
+    {
+      title: "Every call has a price",
+      body: "Each model call is logged with tokens, cost and time, and judgment goes to a larger model while volume goes to a smaller one.",
+    },
+  ],
+  result:
+    "v0 runs, open source under the MIT licence, and is live to try at dispatch.shreyaspachpute.in, with your own key or the keyless demo.",
+};
+
+const ROUNDTABLE_STORY: Story = {
+  kicker:
+    "The hard part is not getting agents to talk. It is getting them to stop.",
+  problem:
+    "Answering an RFP takes a week and a company's best people, because it needs judgment from several sides: is the scope realistic, is the price defensible, is that clause a risk. Most multi-agent demos hide that behind a supervisor that never lets its workers disagree.",
+  built:
+    "Nine agents around one versioned blackboard, run by a Chair. They research, scope, estimate, price, flag risks and write, and a Critic objects with evidence until the proposal holds up. Out come the proposal, a pricing sheet, a risk register and the minutes. A person can take a seat at the table at any point.",
+  decisions: [
+    {
+      title: "Disagreement on the record",
+      body: "Objections are objects with a claim and a citation; an objection without evidence is rejected.",
+    },
+    {
+      title: "Limits, so it ends",
+      body: "At most five objections and three arbitrations per meeting, so every meeting converges.",
+    },
+    {
+      title: "Numbers from code",
+      body: "Prices are computed in code against the rate card, and deviations beyond policy are refused.",
+    },
+    {
+      title: "In parallel where it can be",
+      body: "One estimator per work package, pricing beside risk, every section drafted at once.",
+    },
+  ],
+  result:
+    "v0 runs, open source, and is live to try at roundtable.shreyaspachpute.in, with your own key or without one.",
+};
+
+/* -------------------------------------------------------------------------
    Experience: newest first.
    ------------------------------------------------------------------------- */
 
@@ -151,6 +282,7 @@ export type Role = {
   context: string;
   /** What was built or owned, and what came of it. */
   remarks: readonly string[];
+  story?: Story;
 };
 
 export const EXPERIENCE: readonly Role[] = [
@@ -170,6 +302,7 @@ export const EXPERIENCE: readonly Role[] = [
       "Designed the update flow, so a late or corrected document re-runs the pipeline instead of restarting the return.",
       "The platform today, per dtaxo.com: 8,000+ returns processed for 119 CPA firms and 2,800+ client entities.",
     ],
+    story: DTAXO_STORY,
   },
   {
     company: "Commercient Sync",
@@ -187,6 +320,7 @@ export const EXPERIENCE: readonly Role[] = [
       "Built a SQL View Generator that turns plain-language questions into SQL views over synced data.",
       "Mentored teammates on applied AI as the AI surface of the product grew.",
     ],
+    story: COMMERCIENT_STORY,
   },
 ];
 
@@ -206,11 +340,13 @@ export type Project = {
   points: readonly string[];
   stack: readonly string[];
   links: readonly { label: string; href: string }[];
+  story?: Story;
 };
 
 export const PROJECTS: readonly Project[] = [
   {
     name: "DTAXO",
+    story: DTAXO_STORY,
     owner: "ZYLITIX",
     status: "In production",
     years: "2026 – now",
@@ -225,6 +361,7 @@ export const PROJECTS: readonly Project[] = [
   },
   {
     name: "Commercient AI",
+    story: COMMERCIENT_STORY,
     owner: "Commercient Sync",
     status: "In production",
     years: "2024 – 2026",
@@ -244,6 +381,7 @@ export const PROJECTS: readonly Project[] = [
   },
   {
     name: "Dispatch",
+    story: DISPATCH_STORY,
     owner: "Open source",
     status: "Live to try",
     years: "2026",
@@ -261,6 +399,7 @@ export const PROJECTS: readonly Project[] = [
   },
   {
     name: "Roundtable",
+    story: ROUNDTABLE_STORY,
     owner: "Open source",
     status: "Live to try",
     years: "2026",
@@ -341,6 +480,229 @@ export const SERIES: readonly { name: string; line: string; repo: string }[] = [
     name: "Data Investigation",
     line: "Hypothesis generation and testing over the warehouse, with evidence, not guesses.",
     repo: "ai-data-investigation",
+  },
+];
+
+/* -------------------------------------------------------------------------
+   Sea trials: the six pressures from the home page (PRESSURES in
+   lib/site.ts, same order), put to the real projects. Each entry says what
+   held and, where there is one, the proof. A project only lists the
+   pressures there is evidence for.
+   ------------------------------------------------------------------------- */
+
+export type Trial = {
+  /** Index into PRESSURES: 0 evals, 1 guardrails, 2 architecture,
+   *  3 cost and latency, 4 observability, 5 interface. */
+  pressure: 0 | 1 | 2 | 3 | 4 | 5;
+  held: string;
+  proof?: { label: string; href: string };
+};
+
+const DISPATCH_CODE =
+  "https://github.com/shreyas-pachpute/dispatch/blob/main/apps/api/dispatch";
+const ROUNDTABLE_CODE =
+  "https://github.com/shreyas-pachpute/roundtable/blob/main/apps/api/roundtable";
+
+export const TRIALS: Readonly<Record<string, readonly Trial[]>> = {
+  DTAXO: [
+    {
+      pressure: 0,
+      held: "Every extracted value is tied to the page it came from, and the AI flags each judgment call with its reasoning for the person who signs.",
+    },
+    {
+      pressure: 2,
+      held: "It carries real volume, and a late or corrected document re-runs the chain instead of restarting it.",
+      proof: {
+        label: "8,000+ returns, 119 firms, per dtaxo.com",
+        href: "https://dtaxo.com/",
+      },
+    },
+    {
+      pressure: 4,
+      held: "The firm watches every return move through its stages, from upload to finished return, in a live pipeline.",
+    },
+    {
+      pressure: 5,
+      held: "A new firm files its first live return within 24 hours of onboarding.",
+      proof: { label: "dtaxo.com", href: "https://dtaxo.com/" },
+    },
+  ],
+  "Commercient AI": [
+    {
+      pressure: 2,
+      held: "The agents run inside the existing .NET product, on the ERP and CRM data it already syncs, not beside it.",
+      proof: {
+        label: "commercient.com/ai/agents",
+        href: "https://www.commercient.com/ai/agents/",
+      },
+    },
+    {
+      pressure: 3,
+      held: "Open-weight models on the company's own GPUs with vLLM, so no agent pays per token. The sales agent replaced a $12,000-a-month bot.",
+    },
+    {
+      pressure: 4,
+      held: "The agents are LangGraph graphs with explicit state, so a bad answer can be traced step by step.",
+    },
+    {
+      pressure: 5,
+      held: "Self-serve: customers connect Google Drive, YouTube links, sitemaps or files and get an assistant on their own data.",
+    },
+  ],
+  Dispatch: [
+    {
+      pressure: 0,
+      held: "Every extracted quote must appear word for word in the source document. One retry, then a person.",
+      proof: {
+        label: "validate_quotes, agents.py",
+        href: `${DISPATCH_CODE}/agents.py#L41`,
+      },
+    },
+    {
+      pressure: 1,
+      held: "An independent Reviewer can pass, amend or block every outbound action, and a policy evaluated in code decides what waits for approval. The demo data seeds a prompt injection on purpose.",
+      proof: {
+        label: "policy.yaml",
+        href: "https://github.com/shreyas-pachpute/dispatch/blob/main/data/northwind/policy.yaml",
+      },
+    },
+    {
+      pressure: 3,
+      held: "A gateway sends judgment to a larger model and volume to a smaller one, caches the stable prompt and prices every call.",
+      proof: { label: "gateway.py", href: `${DISPATCH_CODE}/gateway.py#L33` },
+    },
+    {
+      pressure: 4,
+      held: "Every model call is logged with tokens, cost and milliseconds and shown live in the control room; each case keeps the exact context its agents saw.",
+      proof: { label: "store.py", href: `${DISPATCH_CODE}/store.py` },
+    },
+    {
+      pressure: 5,
+      held: "Live to try, with your own key or the keyless demo.",
+      proof: {
+        label: "dispatch.shreyaspachpute.in",
+        href: "https://dispatch.shreyaspachpute.in/",
+      },
+    },
+  ],
+  Roundtable: [
+    {
+      pressure: 0,
+      held: "Every quote is checked against the RFP page it cites, and every price traces to the rate card.",
+      proof: {
+        label: "quote_ok, protocol.py",
+        href: `${ROUNDTABLE_CODE}/protocol.py#L88`,
+      },
+    },
+    {
+      pressure: 1,
+      held: "Objections without evidence are rejected, prices are computed in code, and hard limits (five objections, three arbitrations) make every meeting end.",
+      proof: {
+        label: "LIMITS, protocol.py",
+        href: `${ROUNDTABLE_CODE}/protocol.py#L29`,
+      },
+    },
+    {
+      pressure: 3,
+      held: "The heavy rounds run concurrently, so the slowest branch sets the pace, not the sum, and every turn is priced.",
+      proof: {
+        label: "asyncio.gather, protocol.py",
+        href: `${ROUNDTABLE_CODE}/protocol.py#L169`,
+      },
+    },
+    {
+      pressure: 4,
+      held: "Every turn is recorded with tokens, cost and time; the transcript is the minutes.",
+      proof: { label: "store.py", href: `${ROUNDTABLE_CODE}/store.py#L15` },
+    },
+    {
+      pressure: 5,
+      held: "Live to try, and a person can take a seat at the table to answer, override or settle.",
+      proof: {
+        label: "roundtable.shreyaspachpute.in",
+        href: "https://roundtable.shreyaspachpute.in/",
+      },
+    },
+  ],
+};
+
+/* -------------------------------------------------------------------------
+   Orders: jobs he would be hired for, and the skills (by name, as in
+   SKILLS) each one takes. Drawn from the work above; used by the Skills
+   page's sail plan.
+   ------------------------------------------------------------------------- */
+
+export type Order = {
+  order: string;
+  skills: readonly string[];
+  /** Where he has done it. */
+  where: string;
+};
+
+export const ORDERS: readonly Order[] = [
+  {
+    order: "Read a shoebox of tax documents and get every number right",
+    skills: [
+      "Classification and structured extraction",
+      "Source-traceable citations",
+      "Human-in-the-loop review",
+      "Workflow automation",
+      "Python and FastAPI",
+    ],
+    where: "DTAXO",
+  },
+  {
+    order: "Put an agent inside a product that already has customers",
+    skills: [
+      "AI agents and multi-agent systems",
+      "Retrieval-augmented generation (RAG)",
+      "LangGraph",
+      ".NET (C#)",
+      "REST APIs",
+    ],
+    where: "Commercient",
+  },
+  {
+    order: "Stop an agent from inventing a number",
+    skills: [
+      "Guardrails and approval gates",
+      "LLM evaluation (evals)",
+      "Source-traceable citations",
+      "Structured outputs",
+      "Human-in-the-loop review",
+    ],
+    where: "Dispatch, DTAXO and the agent series",
+  },
+  {
+    order: "Cut the model bill",
+    skills: [
+      "vLLM and self-hosted models",
+      "Cost and call tracing",
+      "Fine-tuning",
+      "AWS, GPU servers, Docker",
+    ],
+    where: "Commercient, Dispatch and Roundtable",
+  },
+  {
+    order: "Turn a company's own documents into an assistant",
+    skills: [
+      "Scraping and ingestion pipelines",
+      "Retrieval-augmented generation (RAG)",
+      "Context engineering",
+      "SQL and PostgreSQL (pgvector)",
+    ],
+    where: "Commercient's bot builder and SQL View Generator",
+  },
+  {
+    order: "Get a team of agents to agree, and stop",
+    skills: [
+      "AI agents and multi-agent systems",
+      "LangGraph",
+      "Context engineering",
+      "Structured outputs",
+      "Claude and OpenAI APIs",
+    ],
+    where: "Roundtable and Dispatch",
   },
 ];
 

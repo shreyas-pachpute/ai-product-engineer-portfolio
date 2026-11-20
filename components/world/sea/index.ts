@@ -11,6 +11,7 @@ import {
   type ShipPart,
 } from "./actors";
 import { SkyView, lightTransmittance, skyRadiance } from "./atmosphere";
+import { MAX_BEACONS, createBeacons, type BeaconDef } from "./beacons";
 import { Clouds } from "./clouds";
 import {
   FATE_COUNT,
@@ -26,6 +27,7 @@ import { Film } from "./film";
 import { MAX_EXTRA_BOATS } from "./limits";
 import { createOcean } from "./ocean";
 import { createSky } from "./sky";
+import { applyTrial, trialHeel } from "./trials";
 import { LAST_CHAPTER, createSample, sampleTimeline } from "./timeline";
 import { WaveTable, type Sea } from "./waves";
 
@@ -164,6 +166,8 @@ export type WorldReadout = {
    * saving, with which of the six ways it went and where on screen.
    */
   told: { serial: number; kind: number; x: number; y: number };
+  /** The Achievements page's lights, on screen, and how lit each is now. */
+  beacons: { x: number; y: number; visible: boolean; level: number }[];
   /** Boats afloat now, boats sunk so far, and which ways have been seen (a bit each). */
   fleet: { afloat: number; sunk: number; found: number };
   horizonY: number;
@@ -183,6 +187,15 @@ export type World = {
   tap(clientX: number, clientY: number): boolean;
   /** Leans on a paper boat: it goes down in one of six ways (fates.ts). */
   lean(slot: number, kind: number): boolean;
+  /**
+   * Sea trials (the Projects page): puts the ship through one of the six
+   * pressures' conditions (trials.ts), or back to calm with -1.
+   */
+  setTrial(kind: number): void;
+  /** Lights on the night coast (the Achievements page); [] for none. */
+  setBeacons(defs: readonly BeaconDef[]): void;
+  /** Turns the camera's line of sight, in degrees to the right; 0 to reset. */
+  setBearing(degrees: number): void;
   readout: WorldReadout;
   onFrame: ((readout: WorldReadout) => void) | null;
   dispose(): void;
@@ -350,6 +363,8 @@ export async function createWorld(
   scene.add(lighthouse.group);
   const rain = createRain(q.rain);
   scene.add(rain.mesh);
+  const beacons = createBeacons();
+  scene.add(beacons.points);
 
   /* The two lights the solid objects are lit by. Both are set every frame
      from the atmosphere, never by hand. */
@@ -450,6 +465,12 @@ export async function createWorld(
     })),
     told: { serial: 0, kind: 0, x: 0, y: 0 },
     fleet: { afloat: 1, sunk: 0, found: 0 },
+    beacons: Array.from({ length: MAX_BEACONS }, () => ({
+      x: 0,
+      y: 0,
+      visible: false,
+      level: 0,
+    })),
     horizonY: 0,
     chapter: 0,
   };
@@ -468,6 +489,18 @@ export async function createWorld(
   let warmed = false;
   let flash = 0;
   let nextFlash = 4;
+  /*
+   * Sea trials. The trial being put (`trialTo`) blends in while the one
+   * before it (`trialFrom`) blends out, so changing pressure never jumps.
+   */
+  let trialTo = -1;
+  let trialFrom = -1;
+  let trialToMix = 0;
+  let trialFromMix = 0;
+  let trialSince = 0;
+  /** The camera's turn away from its shot, radians (the Achievements page). */
+  let bearing = 0;
+  let bearingTarget = 0;
 
   const lightDir = new THREE.Vector3(0, 1, 0);
   const transmittance: RGB = [1, 1, 1];
@@ -496,6 +529,8 @@ export async function createWorld(
   const shipHeave = new Spring(1.5, 0.55);
   const shipPitch = new Spring(1.25, 0.4);
   const shipRoll = new Spring(0.95, 0.3);
+  /** The ship's heel under a squall (sea trials), on top of the waves'. */
+  const shipHeel = new Spring(0.7, 0.18);
   const boatHeave = new Spring(16, 0.5);
   const boatPitch = new Spring(13, 0.42);
   const boatRoll = new Spring(11, 0.38);
@@ -628,8 +663,19 @@ export async function createWorld(
       chapter += (chapterTarget - chapter) * (1 - Math.exp(-dt * 4.5));
       if (Math.abs(chapterTarget - chapter) < 0.0004) chapter = chapterTarget;
     }
-    const changing = Math.abs(chapter - previousChapter) > 1e-5;
     sampleTimeline(sample, chapter);
+    // Sea trials only exist on the Projects page's shot.
+    const trialsHere = chapter > 9.5;
+    const rate = still ? 1 : 1 - Math.exp(-dt * 1.3);
+    trialToMix += ((trialsHere && trialTo >= 0 ? 1 : 0) - trialToMix) * rate;
+    trialFromMix += (0 - trialFromMix) * rate;
+    if (trialFrom >= 0 && trialFromMix > 0.002)
+      applyTrial(sample, trialFrom, smoothstep(0, 1, trialFromMix));
+    if (trialTo >= 0 && trialToMix > 0.002)
+      applyTrial(sample, trialTo, smoothstep(0, 1, trialToMix));
+    const changing =
+      Math.abs(chapter - previousChapter) > 1e-5 ||
+      (trialsHere && (trialToMix > 0.002 || trialFromMix > 0.002));
     // Mist called down on a paper boat: the same fog as the bank between
     // chapters, thickening from the horizon inward, for a few seconds.
     if (mist > 0.001) {
@@ -791,11 +837,20 @@ export async function createWorld(
       camera.position.y,
       waterAtCamera + reach * 0.035 + sample.near * 2,
     );
-    camera.lookAt(
-      sample.look[0] + shiftX,
-      sample.look[1] + sample.narrowY * narrow,
-      sample.look[2],
-    );
+    // A bearing turns the line of sight about the camera (Achievements).
+    bearing +=
+      (bearingTarget - bearing) * (still ? 1 : 1 - Math.exp(-dt * 2.4));
+    let lookX = sample.look[0] + shiftX;
+    let lookZ = sample.look[2];
+    if (Math.abs(bearing) > 1e-5) {
+      const dx = lookX - camera.position.x;
+      const dz = lookZ - camera.position.z;
+      const c = Math.cos(bearing);
+      const sn = Math.sin(bearing);
+      lookX = camera.position.x + dx * c - dz * sn;
+      lookZ = camera.position.z + dx * sn + dz * c;
+    }
+    camera.lookAt(lookX, sample.look[1] + sample.narrowY * narrow, lookZ);
     if (!still) camera.rotation.z += Math.sin(time * 0.19) * 0.003;
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
@@ -964,9 +1019,16 @@ export async function createWorld(
         shipPitch.step(pose.pitch, dt);
         shipRoll.step(pose.roll, dt);
       }
+      // A squall's knock-down, and her recovery (sea trials).
+      const heel =
+        trialTo >= 0 && trialsHere
+          ? trialHeel(trialTo, time - trialSince) * trialToMix
+          : 0;
+      if (still || !last) shipHeel.snap(0);
+      else shipHeel.step(heel, dt);
       ship.group.position.set(s.x, shipHeave.value - SHIP.waterline, s.z);
       ship.group.rotation.set(
-        shipRoll.value * 1.15,
+        shipRoll.value * 1.15 + shipHeel.value,
         s.yaw,
         shipPitch.value,
         "YZX",
@@ -1149,6 +1211,15 @@ export async function createWorld(
       );
     }
 
+    /* ---- Beacons (the Achievements page) ------------------------------- */
+    const beaconsShown = beacons.count() > 0 && chapter > 7.4 && chapter < 8.6;
+    beacons.points.visible = beaconsShown;
+    if (beaconsShown) {
+      beacons.points.material.uniforms.uPixelRatio!.value = pixelRatio;
+      // Bright enough after exposure for the film's bloom to give a glow.
+      beacons.update(time, still, sample.fog, 0.45 / Math.max(exposure, 1e-4));
+    }
+
     /* ---- Lighthouse and rain ------------------------------------------- */
     lighthouse.group.visible = sample.beam > 0.01;
     if (lighthouse.group.visible) {
@@ -1178,7 +1249,7 @@ export async function createWorld(
     renderer.shadowMap.needsUpdate = shadowsNow;
 
     /* The mirror pass: boats, ship and lighthouse only, seen from below. */
-    const mirrored = mirrorOn && (shipShown || afloat > 0);
+    const mirrored = mirrorOn && (shipShown || afloat > 0 || beaconsShown);
     if (mirrored) {
       mirrorCamera.fov = camera.fov;
       mirrorCamera.aspect = camera.aspect;
@@ -1256,6 +1327,22 @@ export async function createWorld(
       state.size = Math.abs(edgePoint.x - state.x);
     }
     project(toldPoint, readout.told);
+    for (let i = 0; i < MAX_BEACONS; i++) {
+      const state = readout.beacons[i]!;
+      const where = beacons.positions[i];
+      if (!beaconsShown || !where) {
+        state.visible = false;
+        continue;
+      }
+      project(where, state);
+      state.visible =
+        tmp2.z < 1 &&
+        state.x > -20 &&
+        state.x < width + 20 &&
+        state.y > -20 &&
+        state.y < height + 20;
+      state.level = beacons.levels[i] ?? 0;
+    }
     tmp.set(
       camera.position.x + forward.x * 4000,
       0,
@@ -1267,11 +1354,13 @@ export async function createWorld(
       tmp.copy(SHIP_ANCHORS[anchor.id]).applyMatrix4(ship.group.matrixWorld);
       project(tmp, anchor);
       const shown = (s.reveal - PART_BUILT[anchor.id]) / 0.04;
-      anchor.visible = shipShown
-        ? Math.min(1, Math.max(0, shown)) *
-          smoothstep(1.92, 2.02, chapter) *
-          (1 - smoothstep(2.96, 3.04, chapter))
-        : 0;
+      const onBoard =
+        Math.min(1, Math.max(0, shown)) *
+        smoothstep(1.92, 2.02, chapter) *
+        (1 - smoothstep(2.96, 3.04, chapter));
+      // On the Projects page every part is pinned while a trial is on.
+      const onTrial = trialsHere && trialTo >= 0 ? trialToMix : 0;
+      anchor.visible = shipShown ? Math.max(onBoard, onTrial) : 0;
     }
     world.onFrame?.(readout);
   }
@@ -1526,6 +1615,29 @@ export async function createWorld(
       paper.yaw = (slot * 2.399) % (Math.PI * 2);
       if (warmed && !running) renderFrame(performance.now());
       return true;
+    },
+
+    setBeacons(defs) {
+      beacons.set(defs);
+      if (warmed && !running) renderFrame(performance.now());
+    },
+
+    setBearing(degrees) {
+      bearingTarget = (degrees * Math.PI) / 180;
+      if (warmed && !running) renderFrame(performance.now());
+    },
+
+    setTrial(kind) {
+      const next = Number.isInteger(kind) && kind >= 0 && kind < 6 ? kind : -1;
+      if (next === trialTo) return;
+      if (trialTo >= 0) {
+        trialFrom = trialTo;
+        trialFromMix = trialToMix;
+      }
+      trialTo = next;
+      trialToMix = 0;
+      trialSince = time;
+      if (warmed && !running) renderFrame(performance.now());
     },
 
     lean(slot, kind) {

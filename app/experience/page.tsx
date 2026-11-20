@@ -1,72 +1,70 @@
 import type { Metadata } from "next";
 import { PageShell, Waiting } from "@/components/site/page-shell";
-import { EXPERIENCE } from "@/lib/content";
+import { buildVoyage } from "@/components/pages/experience/build";
+import { ChartArt, ChartInk } from "@/components/pages/experience/chart-art";
+import { LAYOUTS, chartLayout } from "@/components/pages/experience/geometry";
+import { HarbourPage, LegPage } from "@/components/pages/experience/log-pages";
+import { Reckoning } from "@/components/pages/experience/reckoning";
+import "./experience.css";
 
 export const metadata: Metadata = {
   title: "Experience",
   description:
-    "Where Shreyas Pachpute has worked, and what he built in each role.",
+    "Where Shreyas Pachpute has worked, and what he built in each role, plotted as a navigator's chart.",
   alternates: { canonical: "/experience" },
 };
 
 /**
- * Experience, as the log.
+ * Experience, as dead reckoning.
  *
- * A log is ruled in columns and written a line at a time: when, where,
- * and what happened. So this is a ruled ledger, newest entry first, with
- * the dates in the margin, not a stack of cards.
+ * Before satellites a navigator found the ship's position from a known
+ * start and each leg's course and time, pencilled onto a chart. The career
+ * is that chart: the degree is the harbour of departure, each role a leg,
+ * each port a real date, and the things built in each role are the fixes
+ * pencilled along its leg. A pair of brass dividers measures the passage
+ * between any two ports; the log beside the chart holds each leg's page.
+ *
+ * Everything is rendered here, on the server: the chart's drawing and
+ * every page of the log. components/pages/experience/reckoning.tsx adds
+ * the dividers and the choosing.
  */
 export default function ExperiencePage() {
-  const empty = EXPERIENCE.length === 0;
+  const voyage = buildVoyage();
+  if (voyage.legs.length === 0) {
+    return (
+      <PageShell id="experience">
+        <Waiting what="roles, with dates and what was built in each" />
+      </PageShell>
+    );
+  }
+  const fixes = voyage.legs.map((leg) => leg.remarks.length);
+  const layouts = LAYOUTS.map((id) => chartLayout(id, fixes));
   return (
     <PageShell id="experience">
-      {empty ? (
-        <Waiting what="roles, with dates and what was built in each" />
-      ) : null}
-      <div
-        className="log"
-        role="table"
-        aria-label="Experience"
-        aria-hidden={empty ? true : undefined}
-      >
-        <div className="log__row log__row--head label" role="row">
-          <span role="columnheader">Dates</span>
-          <span role="columnheader">Position</span>
-          <span role="columnheader">Remarks</span>
-        </div>
-        {empty
-          ? [0, 1, 2, 3].map((row) => (
-              <div className="log__row log__row--bare" key={row}>
-                <span />
-                <span />
-                <span />
-              </div>
-            ))
-          : EXPERIENCE.map((role) => (
-              <div
-                className="log__row"
-                role="row"
-                key={`${role.company}-${role.start}`}
-              >
-                <span className="log__dates label" role="cell">
-                  {role.start} – {role.end}
-                </span>
-                <span className="log__position" role="cell">
-                  <strong className="display">{role.title}</strong>
-                  <span>{role.company}</span>
-                  {role.place ? (
-                    <span className="log__place">{role.place}</span>
-                  ) : null}
-                </span>
-                <span className="log__remarks" role="cell">
-                  <span className="log__context">{role.context}</span>
-                  {role.remarks.map((remark) => (
-                    <span key={remark}>{remark}</span>
-                  ))}
-                </span>
-              </div>
-            ))}
-      </div>
+      <Reckoning
+        voyage={voyage}
+        layouts={layouts}
+        art={layouts.map((layout) => (
+          <div key={layout.id} className={`rk-layer rk-layer--${layout.id}`}>
+            <ChartArt layout={layout} voyage={voyage} />
+            <ChartInk layout={layout} />
+          </div>
+        ))}
+        pages={{
+          harbour: voyage.harbour ? (
+            <HarbourPage harbour={voyage.harbour} first={voyage.legs[0]} />
+          ) : null,
+          legs: voyage.legs.map((leg, index) => (
+            <LegPage
+              key={leg.id}
+              leg={leg}
+              index={index}
+              legs={voyage.legs}
+              harbour={voyage.harbour}
+            />
+          )),
+        }}
+      />
     </PageShell>
   );
 }

@@ -1,71 +1,39 @@
 import type { Metadata } from "next";
 import { PageShell } from "@/components/site/page-shell";
-import { PROJECTS, SERIES } from "@/lib/content";
+import { SeaTrials } from "@/components/pages/projects/sea-trials";
+import { PROJECTS, SERIES, TRIALS } from "@/lib/content";
+import "./projects.css";
 
 export const metadata: Metadata = {
   title: "Projects",
   description:
-    "AI products and systems built by Shreyas Pachpute: two in production at companies, the rest open source.",
+    "AI products and systems built by Shreyas Pachpute, put through sea trials: two in production at companies, the rest open source.",
   alternates: { canonical: "/projects" },
 };
 
 /**
- * Projects, as a fleet register.
+ * Projects, as sea trials.
  *
- * A register lists each vessel on its own ruled entry: a number, a name,
- * who she sails for, whether she is in service, and her particulars. That
- * is this page: numbered entries, the name set large, one line saying
- * what it is, and the facts under it. No cards, no thumbnails.
+ * Each project is a vessel. The reader chooses one and puts it through the
+ * pressures that sank the paper boats on the crossing; the 3D ship takes
+ * the weather and a tag pins to the part of her build that held. See
+ * components/pages/projects/sea-trials.tsx.
  *
- * Below the register, the smaller craft: a series of agent systems that
- * live on GitHub, listed by name with the repository's own description.
+ * Below the four ships, the smaller craft: a series of agent systems on
+ * GitHub, by name, with each repository's own description.
  */
 export default function ProjectsPage() {
+  const vessels = PROJECTS.map((project) => ({
+    project,
+    trials: TRIALS[project.name] ?? [],
+  }));
   return (
     <PageShell id="projects">
-      <ol className="fleet">
-        {PROJECTS.map((project, index) => (
-          <li className="vessel" key={project.name}>
-            <p className="vessel__no label" aria-hidden="true">
-              No. {String(index + 1).padStart(2, "0")}
-            </p>
-            <div className="vessel__body">
-              <h2 className="display vessel__name">{project.name}</h2>
-              <p
-                className="vessel__class key label"
-                data-status={project.status}
-              >
-                {project.owner} · {project.status} · {project.years}
-              </p>
-              <p className="body">{project.line}</p>
-              <ul className="vessel__points">
-                {project.points.map((point) => (
-                  <li key={point}>{point}</li>
-                ))}
-              </ul>
-              <p className="vessel__stack label">{project.stack.join(" · ")}</p>
-              <p className="vessel__links label">
-                {project.links.map((link) => (
-                  <a
-                    key={link.href}
-                    className="textlink"
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {link.label}
-                    <span className="sr-only"> (opens in a new tab)</span>
-                  </a>
-                ))}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ol>
+      <SeaTrials vessels={vessels} />
 
       <section className="series" aria-labelledby="series-title">
         <h2 id="series-title" className="display series__title">
-          Also afloat.
+          The smaller craft.
         </h2>
         <p className="body">
           A further {SERIES.length} agent systems, in the open on GitHub and

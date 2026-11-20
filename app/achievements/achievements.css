@@ -1,0 +1,381 @@
+/* Achievements: List of Lights -------------------------------------------------
+
+   The printed list, the identified light's record, the rings that ride on
+   the lights in the 3D world, and the bearing tape. A night page: text in
+   paper on a navy mist. See components/pages/achievements/list-of-lights.tsx.
+   ------------------------------------------------------------------------- */
+
+.page--achievements .lol {
+  display: grid;
+  gap: clamp(1.2rem, 3vh, 1.8rem);
+  max-width: 38rem;
+}
+
+/* The list: set like an official List of Lights. */
+.page--achievements .lol__list {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.page--achievements .lol__list caption {
+  padding-bottom: 0.6rem;
+  text-align: left;
+  color: rgb(251 243 228 / 0.75);
+}
+
+.page--achievements .lol__list thead th {
+  padding: 0.45rem 0.6rem 0.45rem 0;
+  border-top: 2px solid currentColor;
+  border-bottom: 1px solid rgb(251 243 228 / 0.45);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 650;
+  font-stretch: 115%;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  color: rgb(251 243 228 / 0.7);
+}
+
+.page--achievements .lol__list tbody tr {
+  border-bottom: 1px solid rgb(251 243 228 / 0.16);
+  transition: background-color 220ms ease;
+}
+
+.page--achievements .lol__list tbody tr[data-on] {
+  background: rgb(255 197 61 / 0.1);
+}
+
+.page--achievements .lol__list td,
+.page--achievements .lol__list tbody th {
+  padding: 0.3rem 0.6rem 0.3rem 0;
+  vertical-align: middle;
+  text-align: left;
+  font-weight: inherit;
+}
+
+.page--achievements .lol__no,
+.page--achievements .lol__char,
+.page--achievements .lol__brg {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  color: rgb(251 243 228 / 0.85);
+}
+
+.page--achievements .lol__no {
+  width: 2.4rem;
+}
+
+.page--achievements .lol__pick {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.45rem 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: var(--font-display);
+  font-variation-settings: var(--display-axes);
+  font-size: 1.04rem;
+  font-weight: 560;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.page--achievements .lol__pick:hover,
+.page--achievements tr[data-on] .lol__pick {
+  color: var(--color-sun);
+}
+
+/* The record under each light: shown in full without JavaScript, kept for
+   screen readers with it (the card shows it to everyone else). */
+.page--achievements .lol__record {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0 0 0.6rem;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 450;
+}
+
+.page--achievements .lol__why {
+  line-height: 1.4;
+}
+
+:root[data-intro] .page--achievements .lol__record {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.page--achievements .lol__lamp {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.5rem;
+  border-radius: 50%;
+  vertical-align: 0.05em;
+  background: #ffe2b0;
+  box-shadow: 0 0 0.5rem 0.1rem rgb(255 226 176 / 0.8);
+}
+
+.page--achievements .lol__lamp[data-colour="R"] {
+  background: #ff5a3c;
+  box-shadow: 0 0 0.5rem 0.1rem rgb(255 90 60 / 0.8);
+}
+
+.page--achievements .lol__lamp[data-colour="G"] {
+  background: #4dffa0;
+  box-shadow: 0 0 0.5rem 0.1rem rgb(77 255 160 / 0.7);
+}
+
+/* The identified light's record. */
+.page--achievements .lol__card {
+  min-height: 9.5rem;
+  padding: 1rem 1.1rem 1.1rem;
+  border-top: 2px solid var(--color-sun);
+  background: rgb(7 27 47 / 0.55);
+  box-shadow: 0 1rem 2.5rem -1rem rgb(0 0 0 / 0.6);
+}
+
+.page--achievements .lol__card-in {
+  display: grid;
+  gap: 0.45rem;
+  animation: lol-in 480ms var(--ease-out) both;
+}
+
+.page--achievements .lol__card-id {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  font-stretch: 100%;
+  letter-spacing: 0.02em;
+  color: var(--color-sun);
+}
+
+.page--achievements .lol__card-name {
+  font-size: clamp(1.5rem, 1.1rem + 1.2vw, 2.1rem);
+}
+
+.page--achievements .lol__card-by {
+  color: rgb(251 243 228 / 0.75);
+}
+
+.page--achievements .lol__card p {
+  max-width: 34rem;
+  line-height: 1.45;
+}
+
+.page--achievements .lol__card .textlink {
+  justify-self: start;
+}
+
+.page--achievements .lol__card-src {
+  color: rgb(251 243 228 / 0.65);
+}
+
+.page--achievements .lol__hint {
+  color: rgb(251 243 228 / 0.8);
+  line-height: 1.45;
+}
+
+/* Rings on the lights. */
+.page--achievements .lol__markers {
+  position: fixed;
+  inset: 0;
+  z-index: 11;
+  pointer-events: none;
+}
+
+.page--achievements .lol__marker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -1.375rem 0 0 -1.375rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--color-paper);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.page--achievements .lol__marker[hidden] {
+  display: none;
+}
+
+.page--achievements .lol__marker::before {
+  content: "";
+  position: absolute;
+  inset: 0.45rem;
+  border: 1.5px solid rgb(251 243 228 / 0.45);
+  border-radius: 50%;
+  transition:
+    border-color 200ms ease,
+    transform 300ms var(--ease-out);
+}
+
+.page--achievements .lol__marker[data-lit]::before {
+  border-color: rgb(251 243 228 / 0.85);
+}
+
+.page--achievements .lol__marker:hover::before,
+.page--achievements .lol__marker:focus-visible::before {
+  transform: scale(1.18);
+  border-color: var(--color-paper);
+}
+
+.page--achievements .lol__marker[data-on]::before {
+  inset: 0.2rem;
+  border: 2px solid var(--color-sun);
+  box-shadow: 0 0 1.2rem rgb(255 197 61 / 0.45);
+  animation: lol-ring 2.4s ease-in-out infinite;
+}
+
+.page--achievements .lol__marker-no {
+  position: absolute;
+  left: 100%;
+  top: -0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: rgb(251 243 228 / 0.8);
+}
+
+/* The bearing tape: a strip of compass card under a red lubber line. */
+.page--achievements .lol__tape {
+  position: fixed;
+  right: var(--gutter);
+  bottom: calc(clamp(1rem, 3vh, 1.75rem) + env(safe-area-inset-bottom, 0px));
+  z-index: 11;
+  width: min(34rem, 44vw);
+  height: 3.6rem;
+  overflow: hidden;
+  border: 1px solid rgb(251 243 228 / 0.35);
+  background: rgb(7 27 47 / 0.62);
+  color: var(--color-paper);
+  cursor: ew-resize;
+  touch-action: pan-y;
+  user-select: none;
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 18%,
+    #000 82%,
+    transparent
+  );
+}
+
+.page--achievements .lol__tape:focus-visible {
+  outline: 2px solid var(--color-sun);
+  outline-offset: 3px;
+}
+
+/* Ten pixels to the degree; a tick every degree, a long one every ten. */
+.page--achievements .lol__tape-scale {
+  position: absolute;
+  inset: 0;
+  transform: translateX(calc(var(--rel, 0) * -10px));
+  background:
+    repeating-linear-gradient(
+        90deg,
+        rgb(251 243 228 / 0.7) 0 1px,
+        transparent 1px 100px
+      )
+      calc(50% - 0.5px) 0 / 100px 1.1rem repeat-x,
+    repeating-linear-gradient(
+        90deg,
+        rgb(251 243 228 / 0.4) 0 1px,
+        transparent 1px 10px
+      )
+      calc(50% - 0.5px) 0 / 10px 0.55rem repeat-x;
+  will-change: transform;
+}
+
+.page--achievements .lol__tape-scale > span {
+  position: absolute;
+  left: calc(50% + var(--at) * 10px);
+  top: 1.25rem;
+  translate: -50% 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: rgb(251 243 228 / 0.75);
+}
+
+/* The lubber line: where the ship is pointing. */
+.page--achievements .lol__tape::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--color-vermilion);
+  box-shadow: 0 0 0.6rem rgb(255 75 43 / 0.7);
+}
+
+.page--achievements .lol__tape-read {
+  position: absolute;
+  left: 50%;
+  bottom: 0.3rem;
+  translate: -50% 0;
+  padding: 0 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  background: rgb(7 27 47 / 0.9);
+  color: var(--color-sun);
+}
+
+:root[data-world="fallback"] .page--achievements :is(.lol__tape, .lol__markers),
+:root:not([data-intro]) .page--achievements .lol__tape {
+  display: none;
+}
+
+@keyframes lol-in {
+  from {
+    opacity: 0;
+    translate: 0 0.5rem;
+  }
+}
+
+@keyframes lol-ring {
+  50% {
+    box-shadow: 0 0 2rem rgb(255 197 61 / 0.25);
+  }
+}
+
+/* On a tall screen the horizon runs through the middle of the list, so the
+   list is the instrument: choosing a light still turns the camera to it. */
+@media (max-width: 40rem), (max-aspect-ratio: 11/10) {
+  .page--achievements .lol__tape,
+  .page--achievements .lol__markers,
+  .page--achievements .lol__wide {
+    display: none;
+  }
+
+  .page--achievements .lol__brg {
+    display: none;
+  }
+
+  .page--achievements .lol__list thead th:last-child {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page--achievements .lol__card-in,
+  .page--achievements .lol__marker[data-on]::before {
+    animation: none;
+  }
+}

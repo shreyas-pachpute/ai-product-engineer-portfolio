@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Mark } from "@/components/brand/logo";
+import { SailboatGlyph } from "@/components/brand/logo";
 import { voyage } from "@/lib/voyage";
 import type { World, WorldQuality } from "./sea";
 
@@ -164,7 +164,7 @@ export function Stage() {
     <div className="stage" aria-hidden="true">
       <div className="backdrop">
         <span className="backdrop__sun" />
-        <Mark className="backdrop__boat" />
+        <SailboatGlyph className="backdrop__boat" />
       </div>
       <canvas ref={canvasRef} className="world" />
     </div>

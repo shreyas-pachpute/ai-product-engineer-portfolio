@@ -10,15 +10,15 @@ depended on when the weather turns. The home page is that idea as one scroll
 through a physically lit ocean; five more pages hold projects, skills,
 experience, achievements and education, and there is a one-page résumé.
 
-| Route           | What it is                                                   |
-| --------------- | ------------------------------------------------------------ |
-| `/`             | The crossing: five chapters, scroll-driven                   |
-| `/projects`     | "The fleet": a numbered register of what has been built      |
-| `/skills`       | "The rigging": skills as lines made fast to masts            |
-| `/experience`   | "The log": a ruled ledger of roles, newest first             |
-| `/achievements` | "Lights": each one a lamp on a dark page                     |
-| `/education`    | "The plans": each qualification as a drawing title block     |
-| `/resume`       | The résumé: a sheet of paper on screen, one A4 page in print |
+| Route           | What it is                                                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `/`             | The crossing: five chapters, scroll-driven                                                                                    |
+| `/projects`     | "Sea trials": put each real project through the six pressures; the 3D ship takes the weather and the part that held is pinned |
+| `/skills`       | "The sail plan": give the ship an order; the skills it needs haul taut                                                        |
+| `/experience`   | "Dead reckoning": a navigator's chart of the career, measured with dividers                                                   |
+| `/achievements` | "List of Lights": each achievement a light on the night coast, identified by its flash pattern                                |
+| `/education`    | "Unfold the boat": the opening in reverse; the paper boat unfolds into the ship's plans                                       |
+| `/resume`       | The résumé: a sheet of paper on screen, one A4 page in print                                                                  |
 
 The crossing's chapters, and what each stands for (the page says this in plain
 words in every chapter, so nobody has to decode the metaphor):
@@ -47,6 +47,14 @@ through and sinks flat (no cost and latency control), vanishes in mist (no
 observability), or is blown over (no interface). A slip then says what would
 have held. The six are `PRESSURES` in `lib/site.ts`; the sinkings are
 [`sea/fates.ts`](components/world/sea/fates.ts). The ship cannot be pressed.
+
+**Sea trials and lights.** The world takes two inputs from the inner pages:
+`setTrial(kind)` blends one of six sea conditions over the Projects shot
+([`sea/trials.ts`](components/world/sea/trials.ts)), and `setBeacons(defs)`
+plus `setBearing(degrees)` put flashing navigation lights on the night coast
+and turn the camera to them ([`sea/beacons.ts`](components/world/sea/beacons.ts)).
+Both go through `lib/voyage.ts`, which remembers them for a world that loads
+later.
 
 **Contact** offers two equal ways to answer: email, or a 30-minute call on
 Calendly (the booking link the previous site used, in `IDENTITY.booking`).
@@ -193,21 +201,21 @@ the top tier (budget: 16.7 ms), and a steady 60 fps through a full scroll.
 
 ## Brand
 
-A new SP monogram is being chosen. Until it is rolled out, the mark below is
-the one in use.
-
 | Token       | Value     | Used for                      |
 | ----------- | --------- | ----------------------------- |
 | `ink`       | `#0B2A3F` | text                          |
 | `paper`     | `#FBF3E4` | text at night, the menu sheet |
-| `vermilion` | `#FF4B2B` | the mark's sail; key markers  |
+| `vermilion` | `#FF4B2B` | the mark's pennant; markers   |
 | `sun`       | `#FFC53D` | numbered callouts             |
 
-The mark is a mast, a half-disc sail and a wave: a **P**, an **S** on its
-side, and a small ship (`MARK` in
-[`components/brand/logo.tsx`](components/brand/logo.tsx); files in
-[`public/brand/`](public/brand)). Type is Fraunces (display) and Mona Sans
-(text). Every button is a swallowtail pennant.
+The mark is **Masthead**: the P is a mast, capped with a ball, with the
+bowl bent round it; the S is a swallowtail pennant streaming from the
+masthead. SP first, a ship's masthead flying her colours a moment later
+(`MARK` in [`components/brand/logo.tsx`](components/brand/logo.tsx); files in
+[`public/brand/`](public/brand), generated from the same geometry). Type is
+Fraunces cut sharp (display; `--display-axes` in `app/globals.css`), Mona
+Sans (text) and Geist Mono (readouts). Every button is a swallowtail
+pennant.
 
 ## Credits
 
@@ -215,8 +223,6 @@ side, and a small ship (`MARK` in
   textures and cleanup by James Ray Cock; sails by Rico Cilliers; original
   model by Nicolò Zubbini. Compressed for the web; see
   [`public/world/CREDITS.txt`](public/world/CREDITS.txt).
-- **Fraunces** (`assets/fonts/Fraunces-Display.ttf`, used to render the share
-  card): SIL Open Font License, see `assets/fonts/Fraunces-OFL.txt`.
 - **Techniques:** atmosphere coefficients after Bruneton and Hillaire; cloud
   rendering after Schneider (Horizon Zero Dawn) and Hillaire (Frostbite); the
   wave sum after afl_ext and Acerola; AgX tone mapping as implemented in

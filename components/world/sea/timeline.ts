@@ -678,7 +678,8 @@ export const FRAMES: Frame[] = [
     foam: 0,
     foamLevel: 0.9,
     rain: 0,
-    boat: { x: 0, z: 0, yaw: 2.2, opacity: 1 },
+    // The page folds its own paper boat over this view; the world's stays out.
+    boat: { x: 0, z: 0, yaw: 2.2, opacity: 0 },
     ship: SHIP_AWAY,
     beam: 0,
     contrast: 1.04,
